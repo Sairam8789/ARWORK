@@ -243,43 +243,34 @@
 
         var xrExperience = null;
 
-        // Check for WebXR support
-        if ("xr" in navigator) {
-          navigator.xr
-            .isSessionSupported("immersive-ar")
-            .then(function (supported) {
-              var arButton = document.getElementById("arButton");
-              arButton.disabled = !supported;
+        // Check for WebX
+         if ('xr' in navigator) {
+      navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
+        var arButton = document.getElementById('arButton');
+        arButton.disabled = !supported;
 
-              if (supported) {
-                arButton.addEventListener("click", function () {
-                  if (xrExperience === null) {
-                    scene
-                      .createDefaultXRExperienceAsync({
-                        uiOptions: { sessionMode: "immersive-ar" },
-                      })
-                      .then(function (defaultExperience) {
-                        xrExperience = defaultExperience;
-                        xrExperience.sessionManager
-                          .initializeSessionAsync(
-                            BABYLON.WebXRSessionManager.AR
-                          )
-                          .then(function () {
-                            xrExperience.enterXRAsync("immersive-ar");
-                          });
-                      });
-                  } else {
-                    xrExperience.exitXRAsync();
-                    xrExperience = null;
-                  }
+        if (supported) {
+          arButton.addEventListener('click', function () {
+            if (xrExperience === null) {
+              scene.createDefaultXRExperienceAsync({ uiOptions: { sessionMode: "immersive-ar" } }).then(function (defaultExperience) {
+                xrExperience = defaultExperience;
+                xrExperience.sessionManager.initializeAsync().then(function () {
+                  xrExperience.enterXRAsync('immersive-ar');
                 });
-              }
-            });
-        } else {
-          var arButton = document.getElementById("arButton");
-          arButton.textContent = "AR Not Supported";
+              });
+            } else {
+              xrExperience.exitXRAsync();
+              xrExperience = null;
+            }
+          });
         }
       });
-    </script>
+    } else {
+      var arButton = document.getElementById('arButton');
+      arButton.textContent = 'AR Not Supported';
+    }
+  });
+</script>
+
   </body>
 </html>
