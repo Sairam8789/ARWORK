@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Babylon.js sample code</title>
+    <button id="arButton">AR Mode</button>
+    <!-- Babylon.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+    <script src="https://cdn.babylonjs.com/recast.js"></script>
+    <script src="https://cdn.babylonjs.com/ammo.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+    <style>
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #renderCanvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+
+      #canvasZone {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <!-- <script>
+        var canvas = document.getElementById("renderCanvas");
+
+        var startRenderLoop = function (engine, canvas) {
+            engine.runRenderLoop(function () {
+                if (sceneToRender && sceneToRender.activeCamera) {
+                    sceneToRender.render();
+                }
+            });
+        }
+
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+        function delayCreateScene() {
+            var scene = new BABYLON.Scene(engine);
+        
+            engine.enableOfflineSupport = false;
+        
+            engine.setHardwareScalingLevel(0.5);
+        
+            // Load the model
+            BABYLON.SceneLoader.Append("https://www.babylonjs.com/Assets/DamagedHelmet/glTF/", "DamagedHelmet.gltf", scene, function (meshes) {
+        
+                // Create a camera pointing at your model.
+                scene.createDefaultCameraOrLight(true, true, true);
+        
+                // Create a default ground and skybox.
+                var environment = scene.createDefaultEnvironment({
+                    createGround: true,
+                    createSkybox: true,
+                    enableGroundMirror: true,
+                    groundMirrorSizeRatio: 0.5
+                });
+        
+                // Options (target 70fps (which is not possible) with a check every 500ms)
+                var options = new BABYLON.SceneOptimizerOptions(70, 500);
+                options.addOptimization(new BABYLON.HardwareScalingOptimization(0, 1));
+                options.addCustomOptimization(function () {
+                    environment.groundMaterial.reflectionTexture = null;
+                    return true;
+                }, function () {
+                    return "Turning mirror off";
+                });
+                options.addOptimization(new BABYLON.HardwareScalingOptimization(0, 1.5));
+                options.addCustomOptimization(function () {
+                    environment.ground.setEnabled(false);
+                    return true;
+                }, function () {
+                    return "Turning ground off";
+                });
+        
+                // Optimizer
+                var optimizer = new BABYLON.SceneOptimizer(scene, options);
+        
+                // UI
+                var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+                var panel = new BABYLON.GUI.StackPanel();
+                panel.isVertical = false;
+                panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                advancedTexture.addControl(panel);
+        
+                var addButton = function (text, callback) {
+                    var button = BABYLON.GUI.Button.CreateSimpleButton("button", text);
+                    button.width = "140px";
+                    button.height = "40px";
+                    button.color = "white";
+                    button.background = "green";
+                    button.paddingLeft = "10px";
+                    button.paddingRight = "10px";
+                    button.onPointerUpObservable.add(function () {
+                        callback();
+                    });
+                    panel.addControl(button);
+                }
+        
+                // Log
+                var logPanel = new BABYLON.GUI.StackPanel();
+                logPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+                advancedTexture.addControl(logPanel);
+        
+                var logText = new BABYLON.GUI.TextBlock();
+                logText.height = "40px";
+                logText.color = "white";
+                logText.fontSize = 24;
+                logPanel.addControl(logText);
+        
+                // Buttons
+                addButton("Start", function () {
+                    optimizer.start();
+                    logText.text = "State: Running";
+                });
+        
+                addButton("Reset", function () {
+                    optimizer.reset();
+                });
+        
+                addButton("Stop", function () {
+                    optimizer.stop();
+                    logText.text = "State: Stopped";
+                });
+        
+                // Wiring
+                optimizer.onSuccessObservable.add(function () {
+                    logText.text = "State: Done";
+                });
+                optimizer.onNewOptimizationAppliedObservable.add(function (optim) {
+                    var currentPriorityText = new BABYLON.GUI.TextBlock();
+                    currentPriorityText.height = "30px";
+                    currentPriorityText.color = "white";
+                    currentPriorityText.fontSize = 18;
+                    currentPriorityText.text = optim.getDescription();
+                    logPanel.addControl(currentPriorityText);
+                });
+                optimizer.onFailureObservable.add(function () {
+                    logText.text = "State: Failed. Frame rate was " + optimizer.currentFrameRate;
+                });
+            });
+        
+            return scene;
+        }
+                window.initFunction = async function() {
+                    
+                    
+                    
+                    var asyncEngineCreation = async function() {
+                        try {
+                        return createDefaultEngine();
+                        } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
+                    }
+
+                    window.engine = await asyncEngineCreation();
+        if (!engine) throw 'engine should not be null.';
+        startRenderLoop(engine, canvas);
+        window.scene = delayCreateScene();};
+        initFunction().then(() => {sceneToRender = scene                    
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script> -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var canvas = document.getElementById("renderCanvas");
+        var engine = new BABYLON.Engine(canvas, true);
+
+        var createScene = function () {
+          var scene = new BABYLON.Scene(engine);
+          var camera = new BABYLON.FreeCamera(
+            "camera1",
+            new BABYLON.Vector3(0, 5, -10),
+            scene
+          );
+          camera.setTarget(BABYLON.Vector3.Zero());
+          camera.attachControl(canvas, true);
+          var light = new BABYLON.HemisphericLight(
+            "light1",
+            new BABYLON.Vector3(0, 1, 0),
+            scene
+          );
+          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
+          box.position.y = 1;
+
+          var animation = new BABYLON.Animation(
+            "boxAnimation",
+            "rotation.y",
+            30,
+            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
+          );
+          var keys = [];
+          keys.push({ frame: 0, value: 0 });
+          keys.push({ frame: 100, value: Math.PI * 2 });
+          animation.setKeys(keys);
+          box.animations = [animation];
+          scene.beginAnimation(box, 0, 100, true);
+
+          return scene;
+        };
+
+        var scene = createScene();
+        engine.runRenderLoop(function () {
+          scene.render();
+        });
+
+        window.addEventListener("resize", function () {
+          engine.resize();
+        });
+
+        // Check for WebXR support
+        if ("xr" in navigator) {
+          navigator.xr
+            .isSessionSupported("immersive-ar")
+            .then(function (supported) {
+              var arButton = document.getElementById("arButton");
+              arButton.disabled = !supported;
+
+              if (supported) {
+                arButton.addEventListener("click", function () {
+                  scene
+                    .createDefaultXRExperienceAsync({
+                      uiOptions: { sessionMode: "immersive-ar" },
+                    })
+                    .then(function (defaultExperience) {
+                      if (
+                        defaultExperience.sessionManager &&
+                        !defaultExperience.sessionManager.session
+                      ) {
+                        defaultExperience.sessionManager
+                          .initializeSessionAsync(
+                            BABYLON.WebXRSessionManager.AR
+                          )
+                          .then(function () {
+                            defaultExperience.enterXRAsync("immersive-ar");
+                          });
+                      } else {
+                        defaultExperience.exitXRAsync();
+                      }
+                    });
+                });
+              }
+            });
+        } else {
+          var arButton = document.getElementById("arButton");
+          arButton.textContent = "AR Not Supported";
+        }
+      });
+    </script>
+  </body>
+</html>
