@@ -194,11 +194,10 @@
             engine.resize();
         });
     </script> -->
-    <script>
+  <script>
       document.addEventListener("DOMContentLoaded", function () {
         var canvas = document.getElementById("renderCanvas");
         var engine = new BABYLON.Engine(canvas, true);
-
         var createScene = function () {
           var scene = new BABYLON.Scene(engine);
           var camera = new BABYLON.FreeCamera(
@@ -242,6 +241,8 @@
           engine.resize();
         });
 
+        var xrExperience = null;
+
         // Check for WebXR support
         if ("xr" in navigator) {
           navigator.xr
@@ -252,26 +253,25 @@
 
               if (supported) {
                 arButton.addEventListener("click", function () {
-                  scene
-                    .createDefaultXRExperienceAsync({
-                      uiOptions: { sessionMode: "immersive-ar" },
-                    })
-                    .then(function (defaultExperience) {
-                      if (
-                        defaultExperience.sessionManager &&
-                        !defaultExperience.sessionManager.session
-                      ) {
-                        defaultExperience.sessionManager
+                  if (xrExperience === null) {
+                    scene
+                      .createDefaultXRExperienceAsync({
+                        uiOptions: { sessionMode: "immersive-ar" },
+                      })
+                      .then(function (defaultExperience) {
+                        xrExperience = defaultExperience;
+                        xrExperience.sessionManager
                           .initializeSessionAsync(
                             BABYLON.WebXRSessionManager.AR
                           )
                           .then(function () {
-                            defaultExperience.enterXRAsync("immersive-ar");
+                            xrExperience.enterXRAsync("immersive-ar");
                           });
-                      } else {
-                        defaultExperience.exitXRAsync();
-                      }
-                    });
+                      });
+                  } else {
+                    xrExperience.exitXRAsync();
+                    xrExperience = null;
+                  }
                 });
               }
             });
