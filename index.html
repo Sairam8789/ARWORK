@@ -18,10 +18,17 @@
         height: 100%;
         touch-action: none; /* Disable touch action to avoid conflicts with WebXR */
       }
+      #xrButton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1;
+      }
     </style>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
   </head>
   <body>
+    <button id="xrButton">Enter AR</button>
     <canvas id="renderCanvas"></canvas>
     <script>
       window.addEventListener("DOMContentLoaded", () => {
@@ -51,66 +58,103 @@
           scene
         );
 
-        // Create a rotating box visible in both regular and AR scene
+        // Create a rotating box visible in the regular scene
         const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
         box.position.y = 0.5;
 
-        // Handle user interaction to place the AR object in AR mode
-        function onPointerUp(event) {
-          if (scene.isInXRSession) {
-            // Get the position where the user clicked on the screen
-            const pickResult = scene.pick(scene.pointerX, scene.pointerY);
-            if (pickResult.hit) {
-              // Place the AR object at the clicked position
-              box.position.copyFrom(pickResult.pickedPoint);
-            }
+        // Variable to hold the XR session
+        let xrSession;
+
+        // Check if XRWebGLLayer is available
+        function isXRWebGLLayerSupported() {
+          try {
+            new XRWebGLLayer(xrSession, engine.getRenderingCanvas());
+            return true;
+          } catch (e) {
+            return false;
           }
         }
 
-        // Attach the onPointerUp event handler to the canvas
-        canvas.addEventListener("pointerup", onPointerUp);
-
-        // Start the rendering loop
-        engine.runRenderLoop(() => {
-          scene.render();
-        });
-
-        // Variable to hold the XR experience
-        let xr;
-
         // Handle WebXR
-        async function setupAR() {
+        async function enterAR() {
           if (!navigator.xr) {
             console.error("WebXR not supported on this device/browser.");
             return;
           }
 
           try {
-            xr = await BABYLON.WebXRDefaultExperience.CreateAsync(scene, {
-              uiOptions: {
-                sessionMode: "immersive-ar",
-                referenceSpaceType: "local",
-                requiredFeatures: ["hit-test"],
-              },
+            // Request a WebXR session
+            xrSession = await navigator.xr.requestSession("immersive-ar", {
+              requiredFeatures: ["hit-test"],
             });
 
-            if (xr) {
-              // Once in AR mode, set the visibility of the box to true
-              xr.baseExperience.onStateChangedObservable.add((state) => {
-                if (state === BABYLON.WebXRState.IN_XR) {
-                  box.isVisible = true;
-                }
+            // Use XRWebGLLayer if available, otherwise fallback to regular rendering
+            if (isXRWebGLLayerSupported()) {
+              // Use the XRWebGLLayer provided by Babylon.js
+              const xrLayer = new XRWebGLLayer(
+                xrSession,
+                engine.getRenderingCanvas()
+              );
+
+              // Set the XR session's base layer to the XRWebGLLayer
+              xrSession.updateRenderState({ baseLayer: xrLayer });
+
+              // Once the XR session starts, hide the box in the regular scene
+              box.isVisible = false;
+
+              // Handle the "end" event of the XR session to show the box in the regular scene
+              xrSession.addEventListener("end", () => {
+                box.isVisible = true;
+                document.getElementById("xrButton").style.display = "block";
               });
+
+              // Hide the AR button when the XR session starts
+              document.getElementById("xrButton").style.display = "none";
+
+              // Run the XR session
+              xrSession.requestAnimationFrame(onXRFrame);
             } else {
-              console.warn("WebXR experience creation failed.");
+              // Fallback to regular rendering if XRWebGLLayer is not available
+              box.isVisible = true;
+              document.getElementById("xrButton").style.display = "none";
+              engine.runRenderLoop(() => {
+                scene.render();
+              });
             }
           } catch (e) {
             console.error("WebXR not supported or access denied.", e);
           }
         }
 
-        // Call the setupAR() function directly to start the AR experience
-        setupAR();
+        // Handle XR frame updates
+        function onXRFrame(timestamp, xrFrame) {
+          if (xrFrame) {
+            // Update the XR frame and run the next frame
+            xrFrame = xrSession.requestAnimationFrame(onXRFrame);
+          }
+
+          // If the XR session is present, update the scene
+          if (xrSession) {
+            const referenceSpace = xrFrame.getViewerPose(xrSession.refSpace);
+            if (referenceSpace) {
+              // Update the scene with the viewer's pose in AR mode
+              scene.updateCamera(xrFrame, referenceSpace);
+
+              // Render the scene
+              scene.render();
+            }
+          }
+        }
+
+        // Add click event listener to the AR button
+        document.getElementById("xrButton").addEventListener("click", () => {
+          enterAR();
+        });
+
+        // Start the rendering loop for the regular scene
+        engine.runRenderLoop(() => {
+          scene.render();
+        });
       });
     </script>
   </body>
