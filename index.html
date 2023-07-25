@@ -114,18 +114,20 @@
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
+        // Set up an anchor to keep the marker stable in AR mode
+        var anchor = null;
         xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
+          if (results.length && !anchor) {
             const hitTest = results[0];
             if (hitTest.transformationMatrix) {
-              // Use the transformationMatrix to get the position and rotation of the hit test
-              marker.position = hitTest.transformationMatrix.getTranslation();
-              marker.rotationQuaternion =
-                hitTest.transformationMatrix.getRotationQuaternion();
+              // Create an anchor at the hit test position to keep the marker stable
+              anchor =
+                xr.baseExperience.sessionManager.addAnchorPointUsingHitTestResult(
+                  hitTest
+                );
+              marker.setParent(anchor);
               marker.isVisible = true;
             }
-          } else {
-            marker.isVisible = false;
           }
         });
 
