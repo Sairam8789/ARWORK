@@ -10,108 +10,50 @@
       id="renderCanvas"
       style="width: 100%; height: 100%; touch-action: none"
     ></canvas>
-    <button id="arButton">AR Mode</button>
-
+  
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        var canvas = document.getElementById("renderCanvas");
-        var engine = new BABYLON.Engine(canvas, true);
+      window.addEventListener("DOMContentLoaded", async () => {
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        const scene = new BABYLON.Scene(engine);
 
-        var createScene = function () {
-          var scene = new BABYLON.Scene(engine);
-          var camera = new BABYLON.ArcRotateCamera(
-            "camera1",
-            0,
-            0,
-            10,
-            BABYLON.Vector3.Zero(),
-            scene
-          );
-          camera.attachControl(canvas, true);
-          var light = new BABYLON.HemisphericLight(
-            "light1",
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
+        // Create a camera and light
+        const camera = new BABYLON.ArcRotateCamera(
+          "camera",
+          0,
+          0,
+          5,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
 
-          // Create a ground plane to receive shadows
-          // var ground = BABYLON.MeshBuilder.CreateGround(
-          //   "ground",
-          //   { width: 10, height: 10 },
-          //   scene
-          // );
-          // ground.receiveShadows = true;
+        const light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
 
-          // Function to create a box on the ground
-          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-          box.position = new BABYLON.Vector3(0, 0.5, 0); // Position the box slightly above the ground
-          box.visibility = 1; // Hide the box initially
+        // Create a rotating cube
+        const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+        box.position.y = 0.5;
 
-          // Optionally, add any desired material or color to the box
-          // box.material = new BABYLON.StandardMaterial('boxMaterial', scene);
-          // box.material.diffuseColor = new BABYLON.Color3(0, 0, 1);
-
-          // Function to enable shadows when entering AR mode
-          function enableShadows() {
-            scene.lights.forEach(function (light) {
-              light.shadowEnabled = true;
-            });
-          }
-
-          // Check for WebXR support and handle AR button click
-          if ("xr" in navigator) {
-            navigator.xr
-              .isSessionSupported("immersive-ar")
-              .then(function (supported) {
-                var arButton = document.getElementById("arButton");
-                arButton.disabled = !supported;
-
-                if (supported) {
-                  arButton.addEventListener("click", function () {
-                    var xrExperience = null;
-
-                    if (xrExperience === null) {
-                      // Enable shadows when entering AR mode
-                      enableShadows();
-
-                      // Create the XR session and handle the AR mode
-                      scene
-                        .enterXRAsync("immersive-ar")
-                        .then(function (defaultExperience) {
-                          xrExperience = defaultExperience;
-                          box.visibility = 1; // Show the box when entering AR mode
-                        });
-                    } else {
-                      xrExperience.exitXRAsync().then(function () {
-                        xrExperience = null;
-                        box.visibility = 0; // Hide the box when exiting AR mode
-                      });
-                    }
-                  });
-                }
-              });
-          } else {
-            var arButton = document.getElementById("arButton");
-            arButton.textContent = "AR Not Supported";
-          }
-
-          return scene;
-        };
-
-        var scene = createScene();
-
-        // Auto-rotate the camera around the target
-        scene.registerBeforeRender(function () {
-          scene.activeCamera.alpha += 0.005; // Adjust the rotation speed here (higher value means faster rotation)
-        });
-
-        engine.runRenderLoop(function () {
+        // Start the rendering loop
+        engine.runRenderLoop(() => {
           scene.render();
         });
 
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
+        // Handle WebXR
+        async function setupAR() {
+          try {
+            await scene.createDefaultXRExperienceAsync();
+          } catch (e) {
+            console.error("WebXR not supported or access denied.", e);
+          }
+        }
+
+        setupAR();
       });
     </script>
   </body>
