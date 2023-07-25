@@ -73,15 +73,15 @@
         // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
-        // This creates and positions a free camera (non-mesh)
-        var camera = new BABYLON.FreeCamera(
+        // This creates an arc rotate camera with auto-rotation (non-mesh)
+        var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          new BABYLON.Vector3(0, 1, -5),
+          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
+          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
+          5, // Distance from the target (marker)
+          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
           scene
         );
-
-        // This targets the camera to scene origin
-        camera.setTarget(BABYLON.Vector3.Zero());
 
         // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
@@ -114,26 +114,23 @@
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
-        // Set up an anchor to keep the marker stable in AR mode
-        var anchor = null;
         xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length && !anchor) {
+          if (results.length) {
+            marker.isVisible = true;
             const hitTest = results[0];
             if (hitTest.transformationMatrix) {
-              // Create an anchor at the hit test position to keep the marker stable
-              anchor =
-                xr.baseExperience.sessionManager.addAnchorPointUsingHitTestResult(
-                  hitTest
-                );
-              marker.setParent(anchor);
-              marker.isVisible = true;
+              // Use the transformationMatrix to get the position and rotation of the hit test
+              marker.position = hitTest.transformationMatrix.getTranslation();
+              marker.rotationQuaternion =
+                hitTest.transformationMatrix.getRotationQuaternion();
             }
+          } else {
+            marker.isVisible = false;
           }
         });
 
         return scene;
       };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
