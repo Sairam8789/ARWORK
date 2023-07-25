@@ -24,7 +24,7 @@
   <body>
     <canvas id="renderCanvas"></canvas>
     <script>
-      window.addEventListener("DOMContentLoaded", async () => {
+      window.addEventListener("DOMContentLoaded", () => {
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
         const scene = new BABYLON.Scene(engine);
@@ -51,29 +51,33 @@
           scene
         );
 
-        // Create a rotating box visible in the regular scene but not in AR
+        // Create a rotating box visible in both regular and AR scene
         const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
         box.position.y = 0.5;
         box.isVisible = true; // Set this to true to make the box visible in the regular scene
 
-        // Create a sphere (to be shown in AR)
-        let sphere = null;
+        // Create a box that will be used as the AR object
+        const arObject = BABYLON.MeshBuilder.CreateBox(
+          "arObject",
+          { size: 0.2 },
+          scene
+        );
+        arObject.isVisible = false;
 
-        // Handle user interaction in AR mode
+        // Handle user interaction in regular scene mode
         function onPointerUp(event) {
-          if (scene.isInXRSession) {
+          if (!scene.isInXRSession) {
             // Get the position where the user clicked on the screen
             const pickResult = scene.pick(scene.pointerX, scene.pointerY);
             if (pickResult.hit) {
-              // Create a new AR anchor at the clicked position and place the sphere
-              const anchorPosition = pickResult.pickedPoint;
-              if (!sphere) {
-                sphere = BABYLON.MeshBuilder.CreateSphere(
-                  "sphere",
-                  { diameter: 0.5 },
-                  scene
-                );
-                sphere.position.copyFrom(anchorPosition);
+              // Place the AR object at the clicked position
+              if (
+                xr &&
+                xr.baseExperience &&
+                !xr.baseExperience.state.inSession
+              ) {
+                arObject.isVisible = true;
+                arObject.position.copyFrom(pickResult.pickedPoint);
               }
             }
           }
@@ -87,6 +91,9 @@
           scene.render();
         });
 
+        // Variable to hold the XR experience
+        let xr;
+
         // Handle WebXR
         async function setupAR() {
           if (!navigator.xr) {
@@ -95,7 +102,7 @@
           }
 
           try {
-            const xr = await scene.createDefaultXRExperienceAsync({
+            xr = await scene.createDefaultXRExperienceAsync({
               uiOptions: { sessionMode: "immersive-ar" },
             });
 
@@ -110,9 +117,12 @@
           }
         }
 
-        // Start the AR experience
-        setupAR();
+        // Start the AR experience when the XR button is clicked
+        document.getElementById("xrButton").addEventListener("click", () => {
+          setupAR();
+        });
       });
     </script>
+    <button id="xrButton">Enter AR</button>
   </body>
 </html>
