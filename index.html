@@ -18,10 +18,17 @@
         height: 100%;
         touch-action: none; /* Disable touch action to avoid conflicts with WebXR */
       }
+      #xrButton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 1;
+      }
     </style>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
   </head>
   <body>
+    <button id="xrButton">Enter AR</button>
     <canvas id="renderCanvas"></canvas>
     <script>
       window.addEventListener("DOMContentLoaded", () => {
@@ -123,6 +130,5 @@
         });
       });
     </script>
-    <button id="xrButton">Enter AR</button>
   </body>
 </html>
