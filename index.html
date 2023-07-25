@@ -51,24 +51,36 @@
           scene
         );
 
-        // Create a ground plane
-        const ground = BABYLON.Mesh.CreateGround("ground", 10, 10, 2, scene);
-
         // Create a rotating box visible in the regular scene but not in AR
         const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
         box.position.y = 0.5;
         box.isVisible = true; // Set this to true to make the box visible in the regular scene
 
-        // Function to create a sphere at a specified position
-        function createSphereAtPosition(position) {
-          const sphere = BABYLON.MeshBuilder.CreateSphere(
-            "sphere",
-            { diameter: 0.5 },
-            scene
-          );
-          sphere.position.copyFrom(position);
-          return sphere;
+        // Create a sphere (to be shown in AR)
+        let sphere = null;
+
+        // Handle user interaction in AR mode
+        function onPointerUp(event) {
+          if (scene.isInXRSession) {
+            // Get the position where the user clicked on the screen
+            const pickResult = scene.pick(scene.pointerX, scene.pointerY);
+            if (pickResult.hit) {
+              // Create a new AR anchor at the clicked position and place the sphere
+              const anchorPosition = pickResult.pickedPoint;
+              if (!sphere) {
+                sphere = BABYLON.MeshBuilder.CreateSphere(
+                  "sphere",
+                  { diameter: 0.5 },
+                  scene
+                );
+                sphere.position.copyFrom(anchorPosition);
+              }
+            }
+          }
         }
+
+        // Attach the onPointerUp event handler
+        scene.onPointerObservable.add(onPointerUp);
 
         // Start the rendering loop
         engine.runRenderLoop(() => {
@@ -90,13 +102,6 @@
             if (xr.baseExperience) {
               // Hide the box in AR
               box.isVisible = false;
-
-              // Listen for the ground mesh to be set by AR
-              xr.baseExperience.onGroundMeshLoadedObservable.add(() => {
-                // Place objects on the ground using AR anchors
-                const anchorPosition = new BABYLON.Vector3(0, 0, 0); // Specify the position in 3D space
-                createSphereAtPosition(anchorPosition);
-              });
             } else {
               console.warn("WebXR base experience not supported.");
             }
