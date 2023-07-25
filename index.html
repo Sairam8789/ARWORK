@@ -94,7 +94,13 @@
           }
 
           try {
-            xr = await scene.createDefaultXRExperienceAsync();
+            xr = await scene.createDefaultXRExperienceAsync({
+              uiOptions: {
+                sessionMode: "immersive-ar",
+                referenceSpaceType: "local",
+                requiredFeatures: ["hit-test"],
+              },
+            });
 
             if (xr.baseExperience) {
               // Hide the box in AR
