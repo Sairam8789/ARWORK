@@ -118,11 +118,11 @@
           if (results.length) {
             marker.isVisible = true;
             const hitTest = results[0];
-            if (hitTest.transformationMatrix) {
-              // Use the transformationMatrix to get the position and rotation of the hit test
-              marker.position = hitTest.transformationMatrix.getTranslation();
+            if (hitTest.hitMatrix) {
+              // Use the hitMatrix to get the position of the hit test
+              marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
               marker.rotationQuaternion =
-                hitTest.transformationMatrix.getRotationQuaternion();
+                hitTest.hitMatrix.getRotationQuaternion();
             }
           } else {
             marker.isVisible = false;
