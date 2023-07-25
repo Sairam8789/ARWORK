@@ -33,14 +33,14 @@
       camera.attachControl(canvas, true);
 
       // Set the camera position and target to scale down the scene
-      camera.radius = 10; // Increase this value to zoom out (scale down) the scene
-      camera.lowerRadiusLimit = 1; // Set the minimum distance of the camera from the target
+      camera.radius = 5; // Adjust this value for better scaling
+      camera.upperRadiusLimit = 10; // Set the maximum distance of the camera from the target
+      camera.lowerRadiusLimit = 2; // Set the minimum distance of the camera from the target
 
       const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
 
-      // Create a rotating cube
-      const box = BABYLON.MeshBuilder.CreateBox('box', { size: 1 }, scene);
-      box.position.y = 0.5;
+      // Create a ground plane
+      const ground = BABYLON.Mesh.CreateGround("ground", 10, 10, 2, scene);
 
       // Function to create a sphere at a specified position
       function createSphereAtPosition(position) {
@@ -64,12 +64,15 @@
         try {
           const xr = await scene.createDefaultXRExperienceAsync({ uiOptions: { sessionMode: "immersive-ar" } });
 
-          if (xr.onAnchorAddedObservable) {
-            xr.onAnchorAddedObservable.add((anchor) => {
-              createSphereAtPosition(anchor.position);
+          if (xr.baseExperience) {
+            // Listen for the ground mesh to be set by AR
+            xr.baseExperience.onGroundMeshLoadedObservable.add(() => {
+              // Place objects on the ground using AR anchors
+              const anchorPosition = new BABYLON.Vector3(0, 0, 0); // Specify the position in 3D space
+              createSphereAtPosition(anchorPosition);
             });
           } else {
-            console.warn("WebXR anchor events not supported.");
+            console.warn("WebXR base experience not supported.");
           }
         } catch (e) {
           console.error("WebXR not supported or access denied.", e);
