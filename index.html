@@ -61,7 +61,8 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var torus; // Reference to the torus object
+      var torus = null; // Reference to the torus mesh
+
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -108,6 +109,13 @@
 
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
+        torus = BABYLON.MeshBuilder.CreateTorus("torus", {
+          diameter: 0.15,
+          thickness: 0.05,
+        });
+        torus.isVisible = false; // Hide the torus initially
+        torus.rotationQuaternion = new BABYLON.Quaternion();
+
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             const hitTest = results[0];
@@ -122,16 +130,9 @@
           }
         });
 
-        // Create the torus and add it to the scene
-        torus = BABYLON.MeshBuilder.CreateTorus("torus", {
-          diameter: 0.3,
-          thickness: 0.1,
-        });
-        torus.isVisible = false;
-        scene.addMesh(torus); // Add the torus to the scene
-
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
