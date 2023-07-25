@@ -18,17 +18,10 @@
         height: 100%;
         touch-action: none; /* Disable touch action to avoid conflicts with WebXR */
       }
-      #xrButton {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1;
-      }
     </style>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
   </head>
   <body>
-    <button id="xrButton">Enter AR</button>
     <canvas id="renderCanvas"></canvas>
     <script>
       window.addEventListener("DOMContentLoaded", () => {
@@ -63,7 +56,7 @@
         box.position.y = 0.5;
         box.isVisible = true; // Set this to true to make the box visible in the regular scene
 
-        // Handle user interaction in regular scene mode
+        // Handle user interaction to place the AR object in AR mode
         function onPointerUp(event) {
           if (!scene.isInXRSession) {
             // Get the position where the user clicked on the screen
@@ -101,9 +94,7 @@
           }
 
           try {
-            xr = await scene.createDefaultXRExperienceAsync({
-              uiOptions: { sessionMode: "immersive-ar" },
-            });
+            xr = await scene.createDefaultXRExperienceAsync();
 
             if (xr.baseExperience) {
               // Hide the box in AR
@@ -116,10 +107,8 @@
           }
         }
 
-        // Start the AR experience when the XR button is clicked
-        document.getElementById("xrButton").addEventListener("click", () => {
-          setupAR();
-        });
+        // Call the setupAR() function directly to start the AR experience
+        setupAR();
       });
     </script>
   </body>
