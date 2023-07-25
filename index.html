@@ -26,6 +26,8 @@
       }
     </style>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <!-- Add the following line to load Babylon.js WebXR support -->
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
   </head>
   <body>
     <button id="xrButton">Enter AR</button>
@@ -36,19 +38,10 @@
         const engine = new BABYLON.Engine(canvas, true);
         const scene = new BABYLON.Scene(engine);
         let xrSession;
-        let box;
+        let arObject;
+        let xrMode = false;
 
-        // Check if XRWebGLLayer is available
-        function isXRWebGLLayerSupported() {
-          try {
-            new XRWebGLLayer(xrSession, engine.getRenderingCanvas());
-            return true;
-          } catch (e) {
-            return false;
-          }
-        }
-
-        // Create an autorotating camera
+        // Create an autorotating camera for the regular scene
         const camera = new BABYLON.ArcRotateCamera(
           "camera",
           0,
@@ -70,24 +63,29 @@
           scene
         );
 
-        // Create a rotating box visible in the regular scene
-        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-        box.position.y = 0.5;
+        // Create a box that will be used as the AR object
+        arObject = BABYLON.MeshBuilder.CreateBox(
+          "arObject",
+          { size: 0.2 },
+          scene
+        );
+        arObject.isVisible = true; // Initially visible in the regular scene
 
-        // Handle user interaction in regular scene mode
-        function onPointerUp(event) {
-          if (!xrSession) {
+        // Handle user interaction in AR mode
+        function onXRPointerUp(event) {
+          if (xrMode) {
             // Get the position where the user clicked on the screen
             const pickResult = scene.pick(scene.pointerX, scene.pointerY);
             if (pickResult.hit) {
-              // Place the box at the clicked position in the regular scene
-              box.position.copyFrom(pickResult.pickedPoint);
+              // Place the AR object at the clicked position
+              arObject.isVisible = true;
+              arObject.position.copyFrom(pickResult.pickedPoint);
             }
           }
         }
 
-        // Attach the onPointerUp event handler
-        scene.onPointerObservable.add(onPointerUp);
+        // Attach the onPointerUp event handler for AR mode
+        scene.onPointerObservable.add(onXRPointerUp);
 
         // Handle XR frame updates
         function onXRFrame(timestamp, xrFrame) {
@@ -97,7 +95,7 @@
           }
 
           // If the XR session is present, update the scene
-          if (xrSession) {
+          if (xrSession && xrMode) {
             const referenceSpace = xrFrame.getViewerPose(xrSession.refSpace);
             if (referenceSpace) {
               // Update the scene with the viewer's pose in AR mode
@@ -110,7 +108,7 @@
         }
 
         // Handle WebXR
-        async function enterAR() {
+        async function enterXR() {
           if (!navigator.xr) {
             console.error("WebXR not supported on this device/browser.");
             return;
@@ -128,7 +126,7 @@
             );
 
             // Use XRWebGLLayer if available, otherwise fallback to regular rendering
-            if (isXRWebGLLayerSupported()) {
+            if (xrSession.renderState && xrSession.renderState.baseLayer) {
               // Use the XRWebGLLayer provided by Babylon.js
               const xrLayer = new XRWebGLLayer(
                 xrSession,
@@ -142,25 +140,22 @@
               // Set the XR session's base layer to the XRWebGLLayer
               xrSession.updateRenderState({ baseLayer: xrLayer });
 
-              // Once the XR session starts, hide the box in the regular scene
-              box.isVisible = false;
-
-              // Handle the "end" event of the XR session to show the box in the regular scene
-              xrSession.addEventListener("end", () => {
-                box.isVisible = true;
-                document.getElementById("xrButton").style.display = "block";
-                xrSession = null;
-              });
+              // Once the XR session starts, hide the AR object in the regular scene
+              arObject.isVisible = false;
 
               // Hide the AR button when the XR session starts
               document.getElementById("xrButton").style.display = "none";
+
+              // Set XR mode to true
+              xrMode = true;
 
               // Run the XR session
               xrSession.requestAnimationFrame(onXRFrame);
             } else {
               // Fallback to regular rendering if XRWebGLLayer is not available
-              box.isVisible = true;
+              arObject.isVisible = true;
               document.getElementById("xrButton").style.display = "none";
+              xrMode = false;
               engine.runRenderLoop(() => {
                 scene.render();
               });
@@ -172,12 +167,14 @@
 
         // Add click event listener to the AR button
         document.getElementById("xrButton").addEventListener("click", () => {
-          enterAR();
+          enterXR();
         });
 
         // Start the rendering loop for the regular scene
         engine.runRenderLoop(() => {
-          scene.render();
+          if (!xrMode) {
+            scene.render();
+          }
         });
       });
     </script>
