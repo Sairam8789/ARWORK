@@ -63,14 +63,6 @@
         box.position.y = 0.5;
         box.isVisible = true; // Set this to true to make the box visible in the regular scene
 
-        // Create a box that will be used as the AR object
-        const arObject = BABYLON.MeshBuilder.CreateBox(
-          "arObject",
-          { size: 0.2 },
-          scene
-        );
-        arObject.isVisible = false;
-
         // Handle user interaction in regular scene mode
         function onPointerUp(event) {
           if (!scene.isInXRSession) {
@@ -83,8 +75,8 @@
                 xr.baseExperience &&
                 !xr.baseExperience.state.inSession
               ) {
-                arObject.isVisible = true;
-                arObject.position.copyFrom(pickResult.pickedPoint);
+                box.isVisible = true;
+                box.position.copyFrom(pickResult.pickedPoint);
               }
             }
           }
