@@ -54,29 +54,21 @@
         // Create a rotating box visible in both regular and AR scene
         const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
         box.position.y = 0.5;
-        box.isVisible = true; // Set this to true to make the box visible in the regular scene
 
         // Handle user interaction to place the AR object in AR mode
         function onPointerUp(event) {
-          if (!scene.isInXRSession) {
+          if (scene.isInXRSession) {
             // Get the position where the user clicked on the screen
             const pickResult = scene.pick(scene.pointerX, scene.pointerY);
             if (pickResult.hit) {
               // Place the AR object at the clicked position
-              if (
-                xr &&
-                xr.baseExperience &&
-                !xr.baseExperience.state.inSession
-              ) {
-                box.isVisible = true;
-                box.position.copyFrom(pickResult.pickedPoint);
-              }
+              box.position.copyFrom(pickResult.pickedPoint);
             }
           }
         }
 
-        // Attach the onPointerUp event handler
-        scene.onPointerObservable.add(onPointerUp);
+        // Attach the onPointerUp event handler to the canvas
+        canvas.addEventListener("pointerup", onPointerUp);
 
         // Start the rendering loop
         engine.runRenderLoop(() => {
@@ -94,7 +86,7 @@
           }
 
           try {
-            xr = await scene.createDefaultXRExperienceAsync({
+            xr = await BABYLON.WebXRDefaultExperience.CreateAsync(scene, {
               uiOptions: {
                 sessionMode: "immersive-ar",
                 referenceSpaceType: "local",
@@ -102,11 +94,15 @@
               },
             });
 
-            if (xr.baseExperience) {
-              // Hide the box in AR
-              box.isVisible = false;
+            if (xr) {
+              // Once in AR mode, set the visibility of the box to true
+              xr.baseExperience.onStateChangedObservable.add((state) => {
+                if (state === BABYLON.WebXRState.IN_XR) {
+                  box.isVisible = true;
+                }
+              });
             } else {
-              console.warn("WebXR base experience not supported.");
+              console.warn("WebXR experience creation failed.");
             }
           } catch (e) {
             console.error("WebXR not supported or access denied.", e);
