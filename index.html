@@ -69,12 +69,6 @@
         });
       };
 
-      var setInitialMarkerPosition = function (marker) {
-        // Set the initial position and rotation of the marker (you can adjust these values as needed)
-        marker.position = new BABYLON.Vector3(0, 0, 0);
-        marker.rotationQuaternion = new BABYLON.Quaternion();
-      };
-
       var createScene = async function () {
         // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
@@ -122,21 +116,17 @@
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
-            marker.isVisible = true;
-            hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
+            const hitTest = results[0];
+            if (hitTest.transformationMatrix) {
+              // Use the transformationMatrix to get the position and rotation of the hit test
+              marker.position = hitTest.transformationMatrix.getTranslation();
+              marker.rotationQuaternion =
+                hitTest.transformationMatrix.getRotationQuaternion();
+              marker.isVisible = true;
+            }
           } else {
             marker.isVisible = false;
           }
-        });
-
-        // Use the onReadyObservable to set the initial marker position
-        scene.onReadyObservable.addOnce(function () {
-          setInitialMarkerPosition(marker);
         });
 
         return scene;
