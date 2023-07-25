@@ -68,6 +68,13 @@
           disableWebGL2Support: false,
         });
       };
+
+      var setInitialMarkerPosition = function (marker) {
+        // Set the initial position and rotation of the marker (you can adjust these values as needed)
+        marker.position = new BABYLON.Vector3(0, 0, 0);
+        marker.rotationQuaternion = new BABYLON.Quaternion();
+      };
+
       var createScene = async function () {
         // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
@@ -127,8 +134,14 @@
           }
         });
 
+        // Use the onReadyObservable to set the initial marker position
+        scene.onReadyObservable.addOnce(function () {
+          setInitialMarkerPosition(marker);
+        });
+
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
