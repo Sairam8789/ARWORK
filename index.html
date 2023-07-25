@@ -61,6 +61,7 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
+      var torus; // Reference to the torus object
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -107,30 +108,50 @@
 
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-          diameter: 0.15,
-          thickness: 0.05,
+        torus = BABYLON.MeshBuilder.CreateTorus("torus", {
+          diameter: 0.3,
+          thickness: 0.1,
         });
-        marker.isVisible = false;
-        marker.rotationQuaternion = new BABYLON.Quaternion();
+        torus.isVisible = false;
+
+        // Function to move the torus object to a given position
+        function moveTorusToPosition(position) {
+          torus.position.copyFrom(position);
+          torus.isVisible = true;
+        }
+
+        // Event listener for placing the torus object on the ground
+        canvas.addEventListener("click", function (event) {
+          if (xr.baseExperience.state !== BABYLON.WebXRState.IN_XR) return;
+
+          const hitTest = xr.baseExperience.pointerManager
+            .getRay()
+            .xrHitTest(window, "plane");
+          if (hitTest) {
+            const hitPose = hitTest.getPose(scene);
+            if (hitPose) {
+              const newPosition = hitPose.transform.position;
+              // Move the torus object to the clicked position
+              moveTorusToPosition(newPosition);
+            }
+          }
+        });
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
-            marker.isVisible = true;
             const hitTest = results[0];
             if (hitTest.hitMatrix) {
               // Use the hitMatrix to get the position of the hit test
-              marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              marker.rotationQuaternion =
-                hitTest.hitMatrix.getRotationQuaternion();
+              const newPosition = hitTest.hitMatrix.getTranslation();
+              // Move the torus object to the hit position
+              moveTorusToPosition(newPosition);
             }
-          } else {
-            marker.isVisible = false;
           }
         });
 
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
