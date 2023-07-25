@@ -115,6 +115,8 @@
         });
         torus.isVisible = false; // Hide the torus initially
         torus.rotationQuaternion = new BABYLON.Quaternion();
+        torus.position = new BABYLON.Vector3(0, 0, 0);
+        scene.addMesh(torus);
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
@@ -123,7 +125,9 @@
               // Use the hitMatrix to get the position of the hit test
               torus.isVisible = true; // Make the torus visible
               torus.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              torus.rotationQuaternion = hitTest.hitMatrix.getRotationQuaternion();
+              torus.rotationQuaternion =
+                hitTest.hitMatrix.getRotationQuaternion();
+              scene.addMesh(torus);
             }
           } else {
             torus.isVisible = false; // Hide the torus if no hit result
