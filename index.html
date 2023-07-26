@@ -72,11 +72,7 @@
         );
         camera.attachControl(canvas, true);
 
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
+        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -94,7 +90,7 @@
         });
 
         // Function to place the torus at the hit test result
-        function placeTorusAtPosition(hitTestResult) {
+        async function placeTorusAtPosition(hitTestResult) {
           if (!marker) {
             marker = BABYLON.MeshBuilder.CreateTorus("marker", {
               diameter: 0.15,
@@ -102,14 +98,13 @@
             });
             marker.isVisible = true;
             marker.rotationQuaternion = new BABYLON.Quaternion();
+
+            const anchor = await xr.baseExperience.sessionManager.currentSession.createAnchorFromHitTestResultAsync(hitTestResult);
+            marker.position.copyFrom(anchor.transform.position);
+
             scene.addMesh(marker);
           }
 
-          // Use the hit test result to get the position of the hit test
-          marker.position.copyFrom(
-            hitTestResult.getPose(xr.baseExperience.referenceSpace).transform
-              .position
-          );
           // Rotate the torus based on the camera orientation
           var trackedMesh = xr.baseExperience.camera.trackedMeshes[0];
           marker.rotationQuaternion.copyFrom(trackedMesh.rotationQuaternion);
@@ -144,9 +139,7 @@
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log(
-              "the available createEngine function failed. Creating the default engine instead"
-            );
+            console.log("the available createEngine function failed. Creating the default engine instead");
             return createDefaultEngine();
           }
         };
