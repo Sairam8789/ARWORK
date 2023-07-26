@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AR Mode with Plane Deduction in Babylon.js</title>
+    <title>AR Mode with Planes and Object Placement in Babylon.js</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://preview.babylonjs.com/xr/pebble.js"></script>
@@ -25,43 +25,37 @@
                     },
                 });
 
-                // Light
-                var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-                light.intensity = 0.7;
+                // Create Planes
+                var plane1 = BABYLON.MeshBuilder.CreatePlane("plane1", { size: 1 }, scene);
+                plane1.position.x = -0.5;
 
-                // Ground Plane
-                var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 5, height: 5 }, scene);
+                var plane2 = BABYLON.MeshBuilder.CreatePlane("plane2", { size: 1 }, scene);
+                plane2.position.x = 0.5;
 
                 // Create Objects
-                var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-                var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
+                var box1 = BABYLON.MeshBuilder.CreateBox("box1", { size: 0.2 }, scene);
+                box1.position.y = 0.1;
 
-                // Positioning Objects
-                box.position = new BABYLON.Vector3(1, 0.5, 1);
-                sphere.position = new BABYLON.Vector3(-1, 0.5, -1);
+                var box2 = BABYLON.MeshBuilder.CreateBox("box2", { size: 0.2 }, scene);
+                box2.position.y = 0.1;
 
-                // Create a custom shader material
-                var customMaterial = new BABYLON.StandardMaterial("customMaterial", scene);
-                customMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0); // Object color
-                customMaterial.alpha = 0.5; // Set initial transparency
-
-                // Apply the custom material to the objects
-                box.material = customMaterial.clone("boxMaterial");
-                sphere.material = customMaterial.clone("sphereMaterial");
+                // Parent objects to planes
+                box1.parent = plane1;
+                box2.parent = plane2;
 
                 return scene;
             };
 
-            var scene = createScene();
+            createScene().then(scene => {
+                // Start the render loop
+                engine.runRenderLoop(function () {
+                    scene.render();
+                });
 
-            // Start the render loop
-            engine.runRenderLoop(function () {
-                scene.render();
-            });
-
-            // Handle window resize
-            window.addEventListener('resize', function () {
-                engine.resize();
+                // Handle window resize
+                window.addEventListener('resize', function () {
+                    engine.resize();
+                });
             });
         });
     </script>
