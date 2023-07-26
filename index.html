@@ -99,8 +99,7 @@
             marker.isVisible = true;
             marker.rotationQuaternion = new BABYLON.Quaternion();
 
-            const anchor = await xr.baseExperience.sessionManager.currentSession.createAnchorFromHitTestResultAsync(hitTestResult);
-            marker.position.copyFrom(anchor.transform.position);
+            marker.position.copyFrom(hitTestResult.getPose().transform.position);
 
             scene.addMesh(marker);
           }
@@ -111,7 +110,7 @@
         }
 
         xrHitTest.onHitTestResultObservable.add((results) => {
-          if (placingTorus && results.length) {
+          if (placingTorus && results && results.length) {
             // Place the torus when placingTorus is true and there's a hit test result
             const hitTestResult = results[0];
             placeTorusAtPosition(hitTestResult);
