@@ -6,6 +6,7 @@
     <title>Babylon.js sample code</title>
 
     <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
     <script src="https://cdn.babylonjs.com/recast.js"></script>
@@ -22,7 +23,6 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       html,
       body {
@@ -48,7 +48,6 @@
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
-      // 360 Image logic
       window.addEventListener("DOMContentLoaded", function () {
         var canvas = document.getElementById("renderCanvas");
 
@@ -63,44 +62,40 @@
         };
 
         var createScene = async function () {
-          var pushButtonCore;
-          var index = 0;
-
           var scene = new BABYLON.Scene(engine);
           var camera = new BABYLON.ArcRotateCamera(
             "cam",
             Math.PI / 2,
             Math.PI / 2,
             3,
-            new BABYLON.Vector3(0, 0.5, 0)
+            new BABYLON.Vector3(0, 0.5, 0),
+            scene
           );
           var light = new BABYLON.HemisphericLight(
             "sun",
             new BABYLON.Vector3(0, 1, 0),
             scene
           );
-          var anchor = new BABYLON.TransformNode("");
 
           camera.wheelDeltaPercentage = 0.01;
           camera.attachControl(canvas, true);
           camera.lowerRadiusLimit = 1.5;
           camera.upperRadiusLimit = 5;
 
-          let chair;
-          BABYLON.SceneLoader.ImportMesh(
-            "",
-            "/",
-            "air_compressor_obj.glb",
-            scene,
-            function (mesh) {
-              chair = mesh[0].getChildTransformNodes(false)[0];
-              chair.isVisible = false;
-            }
-          );
-
-          // var xr = await scene.createDefaultXRExperienceAsync({floorMeshes: []})
-          // // default is vr, change to ar
-          // xr.enterExitUI["_buttons"][0].sessionMode = "immersive-ar";
+          // let chair;
+          // BABYLON.SceneLoader.ImportMesh(
+          //   "",
+          //   "/",
+          //   "air_compressor_obj.glb",
+          //   scene,
+          //   function (mesh) {
+          //     chair = mesh[0].getChildTransformNodes(false)[0];
+          //     chair.isVisible = false;
+          //   }
+          // );
+          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 });
+          box.position.y = 0.5;
+          scene.addMesh(box);
 
           var xr = await scene.createDefaultXRExperienceAsync({
             uiOptions: {
@@ -169,6 +164,7 @@
 
           return scene;
         };
+
         var engine;
         try {
           engine = createDefaultEngine();
@@ -178,6 +174,7 @@
           );
           engine = createDefaultEngine();
         }
+
         if (!engine) throw "engine should not be null.";
         scene = createScene();
         scene.then((returnedScene) => {
