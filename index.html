@@ -21,8 +21,7 @@
   <button id="enterARButton">Enter AR</button>
 </body>
     <script>
-      
-var xrSession = null; // Global variable to store the XR session
+      var xrSession = null; // Global variable to store the XR session
 var detectedPlanes = new Set(); // Store unique detected plane IDs
 
 // Create the Babylon.js engine
@@ -62,73 +61,61 @@ function onXrSessionEnded(event) {
 
 // Function to start the AR session and enable plane detection
 function startARSession() {
-  navigator.xr.requestSession('immersive-ar').then((session) => {
-    xrSession = session; // Store the XR session in the global variable
-
-    xrSession.addEventListener("end", onXrSessionEnded);
-    xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, engine.getRenderingCanvas()) });
-
-    xrSession.requestReferenceSpace("viewer").then((referenceSpace) => {
-      var hitTestSource = xrSession.requestHitTestSource({ space: referenceSpace });
-      xrSession.addEventListener("select", onSelect); // Optional: Add event listener for interaction
-
-      // Render loop to update the scene
-      function onXRFrame(time, xrFrame) {
-        var hitTestResults = xrFrame.getHitTestResults(hitTestSource);
-
-        // Process hit test results and place virtual objects on detected planes
-        for (const hitTestResult of hitTestResults) {
-          if (hitTestResult.getPose) {
-            var pose = hitTestResult.getPose(referenceSpace);
-            var planeId = hitTestResult.hitTestSource.anchorUID;
-            if (!detectedPlanes.has(planeId)) {
-              var planeMesh = createPlaneMesh(pose.transform, scene);
-              detectedPlanes.add(planeId);
-            }
-          }
-        }
-
-        scene.render();
-        xrFrame.session.requestAnimationFrame(onXRFrame);
-      }
-
-      engine.runRenderLoop(() => {
-        xrSession.requestAnimationFrame((time, frame) => {
-          onXRFrame(time, frame);
-        });
-      });
-    });
-  }).catch((error) => {
-    console.error("Error starting XR session:", error);
-  });
-}
-
-// Function to handle the select event (optional - for interaction)
-function onSelect(event) {
-  // Handle interaction with the virtual objects here
-}
-
-// Initialize AR session when the "Enter AR" button is clicked
-document.getElementById("enterARButton").addEventListener("click", () => {
   if (navigator.xr && navigator.xr.isSessionSupported) {
     navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
       if (supported) {
-        engine.hideLoadingUI(); // Hide Babylon.js loading screen
-        startARSession();
+        navigator.xr.requestSession('immersive-ar').then((session) => {
+          xrSession = session; // Store the XR session in the global variable
+
+          xrSession.addEventListener("end", onXrSessionEnded);
+
+          // Create XRWebGLLayer for AR rendering
+          var xrLayer = new XRWebGLLayer(xrSession, engine.getRenderingCanvas());
+          xrSession.updateRenderState({ baseLayer: xrLayer });
+
+          xrSession.requestReferenceSpace("viewer").then((referenceSpace) => {
+            var hitTestSource = xrSession.requestHitTestSource({ space: referenceSpace });
+            xrSession.addEventListener("select", onSelect); // Optional: Add event listener for interaction
+
+            // Render loop to update the scene
+            function onXRFrame(time, xrFrame) {
+              var hitTestResults = xrFrame.getHitTestResults(hitTestSource);
+
+              // Process hit test results and place virtual objects on detected planes
+              for (const hitTestResult of hitTestResults) {
+                if (hitTestResult.getPose) {
+                  var pose = hitTestResult.getPose(referenceSpace);
+                  var planeId = hitTestResult.hitTestSource.anchorUID;
+                  if (!detectedPlanes.has(planeId)) {
+                    var planeMesh = createPlaneMesh(pose.transform, scene);
+                    detectedPlanes.add(planeId);
+                  }
+                }
+              }
+
+              scene.render();
+              xrFrame.session.requestAnimationFrame(onXRFrame);
+            }
+
+            engine.runRenderLoop(() => {
+              xrSession.requestAnimationFrame((time, frame) => {
+                onXRFrame(time, frame);
+              });
+            });
+          });
+        }).catch((error) => {
+          console.error("Error starting XR session:", error);
+        });
       } else {
         alert("AR is not supported in this browser or device.");
       }
     });
-  } else {
-    alert("AR is not supported in this browser or device.");
   }
-});
 
-// Run the Babylon.js render loop (without AR) until the AR session is started
-engine.runRenderLoop(() => {
-  scene.render();
-});
-
-
-</script>
+    </script>
+</body>
 </html>
+
+
+
+
