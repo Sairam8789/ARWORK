@@ -18,10 +18,11 @@
 <body>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-  
+  <button id="enterARButton">Enter AR</button>
 </body>
     <script>
-      var xrSession = null; // Global variable to store the XR session
+      
+var xrSession = null; // Global variable to store the XR session
 var detectedPlanes = new Set(); // Store unique detected plane IDs
 
 // Create the Babylon.js engine
@@ -104,17 +105,20 @@ function onSelect(event) {
   // Handle interaction with the virtual objects here
 }
 
-// Initialize AR session when the default XR button is clicked
-navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-  if (supported) {
-    document.getElementById("startARButton").addEventListener("click", () => {
-      startARSession();
+// Initialize AR session when the "Enter AR" button is clicked
+document.getElementById("enterARButton").addEventListener("click", () => {
+  if (navigator.xr && navigator.xr.isSessionSupported) {
+    navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+      if (supported) {
+        startARSession();
+      } else {
+        alert("AR is not supported in this browser or device.");
+      }
     });
   } else {
-    // AR not supported, provide fallback
+    alert("AR is not supported in this browser or device.");
   }
 });
-
 
 </script>
 </html>
