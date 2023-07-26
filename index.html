@@ -63,6 +63,7 @@
       if (navigator.xr && navigator.xr.isSessionSupported) {
         navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
           if (supported) {
+            document.getElementById("enterARButton").style.display = "none"; // Hide the button after entering AR
             navigator.xr.requestSession('immersive-ar').then((session) => {
               xrSession = session; // Store the XR session in the global variable
 
