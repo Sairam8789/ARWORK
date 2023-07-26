@@ -54,10 +54,12 @@
 
             var scene = createScene();
 
+            // Start the render loop
             engine.runRenderLoop(function () {
                 scene.render();
             });
 
+            // Handle window resize
             window.addEventListener('resize', function () {
                 engine.resize();
             });
