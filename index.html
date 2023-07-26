@@ -2,9 +2,7 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
     <title>Babylon.js sample code</title>
-
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
@@ -22,7 +20,6 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       html,
       body {
@@ -32,13 +29,11 @@
         margin: 0;
         padding: 0;
       }
-
       #renderCanvas {
         width: 100%;
         height: 100%;
         touch-action: none;
       }
-
       #canvasZone {
         width: 100%;
         height: 100%;
@@ -49,19 +44,12 @@
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
       var canvas = document.getElementById("renderCanvas");
-
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-      };
+      var placingTorus = false; // Variable to control placing torus
+      var marker;
 
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var torus = null; // Reference to the torus mesh
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -72,30 +60,23 @@
       };
 
       var createScene = async function () {
-        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
-        // This creates an arc rotate camera with auto-rotation (non-mesh)
         var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
-          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
-          5, // Distance from the target (marker)
-          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
+          -Math.PI / 2,
+          Math.PI / 4,
+          5,
+          BABYLON.Vector3.Zero(),
           scene
         );
-
-        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
-
-        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -106,35 +87,56 @@
         });
 
         const fm = xr.baseExperience.featuresManager;
+        const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        torus = BABYLON.MeshBuilder.CreateTorus("torus", {
-          diameter: 0.15,
-          thickness: 0.05,
+        window.addEventListener("click", function (event) {
+          placingTorus = !placingTorus; // Toggle placingTorus on each click
         });
-        torus.isVisible = false; // Hide the torus initially
-        torus.rotationQuaternion = new BABYLON.Quaternion();
-        torus.position = new BABYLON.Vector3(0, 0, 0);
-        scene.addMesh(torus);
 
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            const hitTest = results[0];
-            if (hitTest.hitMatrix) {
-              // Use the hitMatrix to get the position of the hit test
-              torus.isVisible = true; // Make the torus visible
-              torus.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              torus.rotationQuaternion =
-                hitTest.hitMatrix.getRotationQuaternion();
-              scene.addMesh(torus);
-            }
+        // Function to place the torus at the hit test result
+        function placeTorusAtPosition(hitTestResult) {
+          if (!marker) {
+            marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+              diameter: 0.15,
+              thickness: 0.05,
+            });
+            marker.isVisible = true;
+            marker.rotationQuaternion = new BABYLON.Quaternion();
+            scene.addMesh(marker);
+          }
+
+          // Use the hit test result to get the position of the hit test
+          marker.position.copyFrom(
+            hitTestResult.getPose(xr.baseExperience.referenceSpace).transform
+              .position
+          );
+          // Rotate the torus based on the camera orientation
+          var trackedMesh = xr.baseExperience.camera.trackedMeshes[0];
+          marker.rotationQuaternion.copyFrom(trackedMesh.rotationQuaternion);
+        }
+
+        xrHitTest.onHitTestResultObservable.add((results) => {
+          if (placingTorus && results.length) {
+            // Place the torus when placingTorus is true and there's a hit test result
+            const hitTestResult = results[0];
+            placeTorusAtPosition(hitTestResult);
           } else {
-            torus.isVisible = false; // Hide the torus if no hit result
+            // Hide the torus when placingTorus is false or there's no hit test result
+            if (marker) {
+              marker.isVisible = false;
+            }
           }
         });
 
         return scene;
+      };
+
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
       };
 
       window.initFunction = async function () {
@@ -160,7 +162,6 @@
         });
       });
 
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
