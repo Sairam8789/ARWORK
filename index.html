@@ -18,10 +18,11 @@
 <body>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-  <script src="app.js"></script>
+  
 </body>
     <script>
-        var xrSession = null; // Global variable to store the XR session
+      var xrSession = null; // Global variable to store the XR session
+var detectedPlanes = new Set(); // Store unique detected plane IDs
 
 // Create the Babylon.js engine
 var canvas = document.createElement("canvas");
@@ -34,68 +35,19 @@ var camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 0, 0), scen
 camera.setTarget(BABYLON.Vector3.Zero());
 camera.attachControl(canvas, true);
 
-// Enable XR
-if (navigator.xr) {
-  navigator.xr.requestDevice().then((xrDevice) => {
-    xrDevice.supportsSession({ immersive: true, exclusive: true, outputContext: canvas }).then((supported) => {
-      if (supported) {
-        startXRSession(xrDevice);
-      } else {
-        // AR not supported, provide fallback
-      }
-    });
-  });
-} else {
-  // AR not supported, provide fallback
-}
-
-// Start XR session and enable plane detection
-function startXRSession(xrDevice) {
-  xrDevice.requestSession({ immersive: true, exclusive: true, outputContext: canvas }).then((session) => {
-    xrSession = session; // Store the XR session in the global variable
-
-    xrSession.requestReferenceSpace("local").then((referenceSpace) => {
-      xrSession.addEventListener("end", onXrSessionEnded);
-      xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, engine.getRenderingCanvas()) });
-
-      // Enable plane detection
-      xrSession.requestHitTestSource({ space: referenceSpace }).then((hitTestSource) => {
-        engine.runRenderLoop(() => {
-          xrSession.requestAnimationFrame((time, frame) => {
-            onXRFrame(time, frame, hitTestSource);
-          });
-        });
-      });
-    });
-  }).catch((error) => {
-    console.error("Error starting XR session:", error);
-  });
-}
-
-// Create a box mesh to place in the AR scene
-var boxSize = 0.1; // Adjust the size of the box
-var box = BABYLON.MeshBuilder.CreateBox("box", { size: boxSize }, scene);
-box.isVisible = false; // Hide the box initially
-
-// Render loop to update the scene
-function onXRFrame(time, xrFrame, hitTestSource) {
-  var hitTestResults = xrFrame.getHitTestResults(hitTestSource);
-  if (hitTestResults.length > 0) {
-    // Get the first hit test result and place the box
-    var pose = hitTestResults[0].getPose(xrFrame.session.endReferenceSpace);
-    if (pose) {
-      box.position.copyFrom(pose.transform.position);
-      box.rotationQuaternion.copyFrom(pose.transform.orientation);
-      box.isVisible = true; // Show the box when placed on a detected plane
-    } else {
-      box.isVisible = false; // Hide the box if no valid pose is found
-    }
-  }
-
-  scene.render();
-  xrFrame.session.requestAnimationFrame((time, frame) => {
-    onXRFrame(time, frame, hitTestSource);
-  });
+// Function to create a plane mesh
+function createPlaneMesh(poseTransform, scene) {
+  var planeSize = 1.0; // Adjust the size of the plane
+  var plane = BABYLON.MeshBuilder.CreatePlane("plane", { size: planeSize }, scene);
+  plane.position.copyFrom(poseTransform.position);
+  plane.rotationQuaternion.copyFrom(poseTransform.orientation);
+  plane.isVisible = true;
+  plane.isPickable = false;
+  plane.material = new BABYLON.StandardMaterial("planeMaterial", scene);
+  plane.material.alpha = 0.5; // Adjust the transparency of the plane visualization
+  plane.material.backFaceCulling = false;
+  plane.material.diffuseColor = new BABYLON.Color3(0.3, 0.8, 0.3); // Adjust the color of the plane visualization
+  return plane;
 }
 
 // Function to handle ending the XR session
@@ -104,10 +56,65 @@ function onXrSessionEnded(event) {
   console.log("XR session ended.");
 }
 
-// Run the Babylon.js engine
-engine.runRenderLoop(() => {
-  scene.render();
+// Function to start the AR session and enable plane detection
+function startARSession() {
+  navigator.xr.requestSession('immersive-ar').then((session) => {
+    xrSession = session; // Store the XR session in the global variable
+
+    xrSession.addEventListener("end", onXrSessionEnded);
+    xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, engine.getRenderingCanvas()) });
+
+    xrSession.requestReferenceSpace("viewer").then((referenceSpace) => {
+      var hitTestSource = xrSession.requestHitTestSource({ space: referenceSpace });
+      xrSession.addEventListener("select", onSelect); // Optional: Add event listener for interaction
+
+      // Render loop to update the scene
+      function onXRFrame(time, xrFrame) {
+        var hitTestResults = xrFrame.getHitTestResults(hitTestSource);
+        
+        // Process hit test results and place virtual objects on detected planes
+        for (const hitTestResult of hitTestResults) {
+          if (hitTestResult.getPose) {
+            var pose = hitTestResult.getPose(referenceSpace);
+            var planeId = hitTestResult.hitTestSource.anchorUID;
+            if (!detectedPlanes.has(planeId)) {
+              var planeMesh = createPlaneMesh(pose.transform, scene);
+              detectedPlanes.add(planeId);
+            }
+          }
+        }
+
+        scene.render();
+        xrFrame.session.requestAnimationFrame(onXRFrame);
+      }
+
+      engine.runRenderLoop(() => {
+        xrSession.requestAnimationFrame((time, frame) => {
+          onXRFrame(time, frame);
+        });
+      });
+    });
+  }).catch((error) => {
+    console.error("Error starting XR session:", error);
+  });
+}
+
+// Function to handle the select event (optional - for interaction)
+function onSelect(event) {
+  // Handle interaction with the virtual objects here
+}
+
+// Initialize AR session when the default XR button is clicked
+navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+  if (supported) {
+    document.getElementById("startARButton").addEventListener("click", () => {
+      startARSession();
+    });
+  } else {
+    // AR not supported, provide fallback
+  }
 });
+
 
 </script>
 </html>
