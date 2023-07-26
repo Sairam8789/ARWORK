@@ -114,20 +114,20 @@
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            marker.isVisible = true;
-            const hitTest = results[0];
-            if (hitTest.hitMatrix) {
-              // Use the hitMatrix to get the position of the hit test
-              marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              marker.rotationQuaternion =
-                hitTest.hitMatrix.getRotationQuaternion();
-            }
-          } else {
-            marker.isVisible = false;
-          }
-        });
+        // xrTest.onHitTestResultObservable.add((results) => {
+        //   if (results.length) {
+        //     marker.isVisible = true;
+        //     const hitTest = results[0];
+        //     if (hitTest.hitMatrix) {
+        //       // Use the hitMatrix to get the position of the hit test
+        //       marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
+        //       marker.rotationQuaternion =
+        //         hitTest.hitMatrix.getRotationQuaternion();
+        //     }
+        //   } else {
+        //     marker.isVisible = false;
+        //   }
+        // });
         window.addEventListener("touchend", function (event) {
           if (marker && sceneToRender && sceneToRender.activeCamera) {
             var pickResult = sceneToRender.pick(
