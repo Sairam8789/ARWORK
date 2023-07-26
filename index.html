@@ -2,7 +2,10 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
     <title>Babylon.js sample code</title>
+
+    <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
     <script src="https://cdn.babylonjs.com/recast.js"></script>
@@ -19,19 +22,23 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
     <style>
-      html, body {
+      html,
+      body {
         overflow: hidden;
         width: 100%;
         height: 100%;
         margin: 0;
         padding: 0;
       }
+
       #renderCanvas {
         width: 100%;
         height: 100%;
         touch-action: none;
       }
+
       #canvasZone {
         width: 100%;
         height: 100%;
@@ -42,10 +49,6 @@
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
       var canvas = document.getElementById("renderCanvas");
-      var engine = null;
-      var scene = null;
-      var sceneToRender = null;
-      var marker = null;
 
       var startRenderLoop = function (engine, canvas) {
         engine.runRenderLoop(function () {
@@ -55,6 +58,9 @@
         });
       };
 
+      var engine = null;
+      var scene = null;
+      var sceneToRender = null;
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -64,23 +70,30 @@
       };
 
       var createScene = async function () {
+        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
+        // This creates an arc rotate camera with auto-rotation (non-mesh)
         var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          -Math.PI / 2,
-          Math.PI / 4,
-          5,
-          BABYLON.Vector3.Zero(),
+          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
+          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
+          5, // Distance from the target (marker)
+          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
           scene
         );
+
+        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
+
+        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -90,46 +103,70 @@
           optionalFeatures: true,
         });
 
-        const fm = xr.featuresManager;
-        const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-        const xrSelect = fm.enableFeature(BABYLON.WebXRFeatureName.POINTER_SELECTION, "latest");
+        const fm = xr.baseExperience.featuresManager;
 
-        marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+
+        const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
           diameter: 0.15,
           thickness: 0.05,
         });
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
-        xrHitTest.onHitTestResultObservable.add((results) => {
+        xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             marker.isVisible = true;
             const hitTest = results[0];
             if (hitTest.hitMatrix) {
+              // Use the hitMatrix to get the position of the hit test
               marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              marker.rotationQuaternion = hitTest.hitMatrix.getRotationQuaternion();
+              marker.rotationQuaternion =
+                hitTest.hitMatrix.getRotationQuaternion();
             }
           } else {
             marker.isVisible = false;
           }
         });
+        window.addEventListener("touchend", function (event) {
+          if (marker && sceneToRender && sceneToRender.activeCamera) {
+            var pickResult = sceneToRender.pick(
+              sceneToRender.pointerX,
+              sceneToRender.pointerY
+            );
+            if (pickResult.hit && pickResult.pickedPoint) {
+              // Get the camera position
+              var cameraPosition = sceneToRender.activeCamera.position;
 
-        xrSelect.onSelectionChangedObservable.add((eventData) => {
-          if (eventData && eventData.hit) {
-            marker.position.copyFrom(eventData.hit.pickedPoint);
-            marker.isVisible = true;
+              // Calculate the direction vector from the camera to the hit point
+              var direction = pickResult.pickedPoint.subtract(cameraPosition);
+              direction.normalize();
+
+              // Set the desired distance (1 meter in this case)
+              var desiredDistance = 1; // in meters
+
+              // Calculate the final position by adding the direction vector scaled by the desired distance
+              var finalPosition = pickResult.pickedPoint.add(
+                direction.scale(desiredDistance)
+              );
+
+              // Set the marker's position to the final position
+              marker.position.copyFrom(finalPosition);
+              marker.isVisible = true;
+            }
           }
         });
 
         return scene;
       };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
             return createDefaultEngine();
           }
         };
@@ -143,17 +180,6 @@
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
         });
-      });
-
-      // Touch event listener to handle user clicks/taps on the screen
-      window.addEventListener("touchend", function (event) {
-        if (marker && sceneToRender && sceneToRender.activeCamera) {
-          var pickResult = sceneToRender.pick(sceneToRender.pointerX, sceneToRender.pointerY);
-          if (pickResult.hit) {
-            marker.position.copyFrom(pickResult.pickedPoint);
-            marker.isVisible = true;
-          }
-        }
       });
 
       // Resize
