@@ -48,20 +48,29 @@
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
+      var sceneToRender;
       window.addEventListener("DOMContentLoaded", function () {
         var canvas = document.getElementById("renderCanvas");
+        var engine = createDefaultEngine();
+        if (!engine) throw "Engine should not be null.";
 
-        var engine = null;
-        var scene = null;
-        var sceneToRender = null;
-        var createDefaultEngine = function () {
-          return new BABYLON.Engine(canvas, true, {
-            preserveDrawingBuffer: true,
-            stencil: true,
-          });
-        };
+        var scene = createScene();
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
 
-        var createScene = async function () {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+          engine.resize();
+        });
+
+        async function createScene() {
           var scene = new BABYLON.Scene(engine);
           var camera = new BABYLON.ArcRotateCamera(
             "cam",
@@ -82,17 +91,6 @@
           camera.lowerRadiusLimit = 1.5;
           camera.upperRadiusLimit = 5;
 
-          // let chair;
-          // BABYLON.SceneLoader.ImportMesh(
-          //   "",
-          //   "/",
-          //   "air_compressor_obj.glb",
-          //   scene,
-          //   function (mesh) {
-          //     chair = mesh[0].getChildTransformNodes(false)[0];
-          //     chair.isVisible = false;
-          //   }
-          // );
           var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 });
           box.position.y = 0.5;
           scene.addMesh(box);
@@ -135,17 +133,31 @@
           });
 
           if (anchors) {
-            console.log("anchors attached");
+            console.log("Anchors enabled");
+            // Uncomment the following lines if you have a 'chair' model to load
+            // let chair;
+            // BABYLON.SceneLoader.ImportMesh(
+            //   "",
+            //   "/",
+            //   "air_compressor_obj.glb",
+            //   scene,
+            //   function (mesh) {
+            //     chair = mesh[0].getChildTransformNodes(false)[0];
+            //     chair.isVisible = false;
+            //   }
+            // );
+
             anchors.onAnchorAddedObservable.add((anchor) => {
-              console.log("attaching", anchor);
-              chair.isVisible = true;
-              anchor.attachedNode = chair.clone("mensch");
-              chair.isVisible = false;
+              console.log("Attaching anchor", anchor);
+              // Attach your virtual content to the anchor point
+              // chair.isVisible = true;
+              // anchor.attachedNode = chair.clone("mensch");
+              // chair.isVisible = false;
             });
 
             anchors.onAnchorRemovedObservable.add((anchor) => {
-              console.log("disposing", anchor);
-              if (anchor) {
+              console.log("Disposing anchor", anchor);
+              if (anchor && anchor.attachedNode) {
                 anchor.attachedNode.isVisible = false;
                 anchor.attachedNode.dispose();
               }
@@ -163,34 +175,14 @@
           };
 
           return scene;
-        };
-
-        var engine;
-        try {
-          engine = createDefaultEngine();
-        } catch (e) {
-          console.log(
-            "the available createEngine function failed. Creating the default engine instead"
-          );
-          engine = createDefaultEngine();
         }
 
-        if (!engine) throw "engine should not be null.";
-        scene = createScene();
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
-
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-
-        // Resize
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
+        function createDefaultEngine() {
+          return new BABYLON.Engine(canvas, true, {
+            preserveDrawingBuffer: true,
+            stencil: true,
+          });
+        }
       });
     </script>
   </body>
