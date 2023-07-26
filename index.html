@@ -2,7 +2,9 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
     <title>Babylon.js sample code</title>
+
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
@@ -30,11 +32,13 @@
         margin: 0;
         padding: 0;
       }
+
       #renderCanvas {
         width: 100%;
         height: 100%;
         touch-action: none;
       }
+
       #canvasZone {
         width: 100%;
         height: 100%;
@@ -43,14 +47,20 @@
   </head>
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-   <script>
+    <script>
       var canvas = document.getElementById("renderCanvas");
-      var marker;
+
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
+      };
 
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -94,67 +104,41 @@
         });
 
         const fm = xr.baseExperience.featuresManager;
-        const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        // Function to place the torus at the hit test result with an offset
-        async function placeTorusAtPosition(hitTestResult) {
-          if (hitTestResult.results && hitTestResult.results.length > 0) {
-            if (!marker) {
-              marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-                diameter: 0.15,
-                thickness: 0.05,
-              });
-              marker.isVisible = true;
-              marker.rotationQuaternion = new BABYLON.Quaternion();
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-              // Add an offset to position the torus 1 meter away from the user
-              const offset = new BABYLON.Vector3(0, 0, -1); // 1 meter along the negative Z-axis
-              marker.position.copyFrom(hitTestResult.results[0].getPose().transform.position).addInPlace(offset);
+        const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+          diameter: 0.15,
+          thickness: 0.05,
+        });
+        marker.isVisible = false;
+        marker.rotationQuaternion = new BABYLON.Quaternion();
 
-              scene.addMesh(marker);
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (results.length) {
+            marker.isVisible = true;
+            const hitTest = results[0];
+            if (hitTest.hitMatrix) {
+              // Use the hitMatrix to get the position of the hit test
+              marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
+              marker.rotationQuaternion =
+                hitTest.hitMatrix.getRotationQuaternion();
             }
-
-            // Rotate the torus based on the camera orientation
-            var trackedMesh = xr.baseExperience.camera.trackedMeshes[0];
-            marker.rotationQuaternion.copyFrom(trackedMesh.rotationQuaternion);
           } else {
-            // Hide the torus when there's no hit test result
-            if (marker) {
-              marker.isVisible = false;
-            }
-          }
-        }
-
-        xrHitTest.onHitTestResultObservable.add((results) => {
-          if (results && results.length > 0) {
-            // Place the torus when there's a hit test result
-            const hitTestResult = results[0];
-            placeTorusAtPosition(hitTestResult);
-          } else {
-            // Hide the torus when there's no hit test result
-            if (marker) {
-              marker.isVisible = false;
-            }
+            marker.isVisible = false;
           }
         });
 
         return scene;
       };
-
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-      };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
             return createDefaultEngine();
           }
         };
@@ -170,6 +154,7 @@
         });
       });
 
+      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
