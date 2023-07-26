@@ -36,6 +36,9 @@ var camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 0, 0), scen
 camera.setTarget(BABYLON.Vector3.Zero());
 camera.attachControl(canvas, true);
 
+// Create a light source
+var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
 // Function to create a plane mesh
 function createPlaneMesh(poseTransform, scene) {
   var planeSize = 1.0; // Adjust the size of the plane
@@ -72,7 +75,7 @@ function startARSession() {
       // Render loop to update the scene
       function onXRFrame(time, xrFrame) {
         var hitTestResults = xrFrame.getHitTestResults(hitTestSource);
-        
+
         // Process hit test results and place virtual objects on detected planes
         for (const hitTestResult of hitTestResults) {
           if (hitTestResult.getPose) {
@@ -110,6 +113,7 @@ document.getElementById("enterARButton").addEventListener("click", () => {
   if (navigator.xr && navigator.xr.isSessionSupported) {
     navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
       if (supported) {
+        engine.hideLoadingUI(); // Hide Babylon.js loading screen
         startARSession();
       } else {
         alert("AR is not supported in this browser or device.");
@@ -119,6 +123,12 @@ document.getElementById("enterARButton").addEventListener("click", () => {
     alert("AR is not supported in this browser or device.");
   }
 });
+
+// Run the Babylon.js render loop (without AR) until the AR session is started
+engine.runRenderLoop(() => {
+  scene.render();
+});
+
 
 </script>
 </html>
