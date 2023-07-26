@@ -43,7 +43,7 @@
   </head>
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <script>
+   <script>
       var canvas = document.getElementById("renderCanvas");
       var marker;
 
@@ -98,28 +98,35 @@
 
         // Function to place the torus at the hit test result with an offset
         async function placeTorusAtPosition(hitTestResult) {
-          if (!marker) {
-            marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-              diameter: 0.15,
-              thickness: 0.05,
-            });
-            marker.isVisible = true;
-            marker.rotationQuaternion = new BABYLON.Quaternion();
+          if (hitTestResult.results && hitTestResult.results.length > 0) {
+            if (!marker) {
+              marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+                diameter: 0.15,
+                thickness: 0.05,
+              });
+              marker.isVisible = true;
+              marker.rotationQuaternion = new BABYLON.Quaternion();
 
-            // Add an offset to position the torus 1 meter away from the user
-            const offset = new BABYLON.Vector3(0, 0, -1); // 1 meter along the negative Z-axis
-            marker.position.copyFrom(hitTestResult.getPose().transform.position).addInPlace(offset);
+              // Add an offset to position the torus 1 meter away from the user
+              const offset = new BABYLON.Vector3(0, 0, -1); // 1 meter along the negative Z-axis
+              marker.position.copyFrom(hitTestResult.results[0].getPose().transform.position).addInPlace(offset);
 
-            scene.addMesh(marker);
+              scene.addMesh(marker);
+            }
+
+            // Rotate the torus based on the camera orientation
+            var trackedMesh = xr.baseExperience.camera.trackedMeshes[0];
+            marker.rotationQuaternion.copyFrom(trackedMesh.rotationQuaternion);
+          } else {
+            // Hide the torus when there's no hit test result
+            if (marker) {
+              marker.isVisible = false;
+            }
           }
-
-          // Rotate the torus based on the camera orientation
-          var trackedMesh = xr.baseExperience.camera.trackedMeshes[0];
-          marker.rotationQuaternion.copyFrom(trackedMesh.rotationQuaternion);
         }
 
         xrHitTest.onHitTestResultObservable.add((results) => {
-          if (results && results.length) {
+          if (results && results.length > 0) {
             // Place the torus when there's a hit test result
             const hitTestResult = results[0];
             placeTorusAtPosition(hitTestResult);
