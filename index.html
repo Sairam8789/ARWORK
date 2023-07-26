@@ -20,6 +20,7 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
     <style>
       html,
       body {
@@ -44,7 +45,6 @@
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
       var canvas = document.getElementById("renderCanvas");
-      var placingTorus = false; // Variable to control placing torus
       var marker;
 
       var engine = null;
@@ -60,19 +60,30 @@
       };
 
       var createScene = async function () {
+        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
+        // This creates an arc rotate camera with auto-rotation (non-mesh)
         var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          -Math.PI / 2,
-          Math.PI / 4,
-          5,
-          BABYLON.Vector3.Zero(),
+          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
+          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
+          5, // Distance from the target (marker)
+          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
           scene
         );
+
+        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+
+        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -85,11 +96,7 @@
         const fm = xr.baseExperience.featuresManager;
         const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        window.addEventListener("click", function (event) {
-          placingTorus = !placingTorus; // Toggle placingTorus on each click
-        });
-
-        // Function to place the torus at the hit test result
+        // Function to place the torus at the hit test result with an offset
         async function placeTorusAtPosition(hitTestResult) {
           if (!marker) {
             marker = BABYLON.MeshBuilder.CreateTorus("marker", {
@@ -99,7 +106,9 @@
             marker.isVisible = true;
             marker.rotationQuaternion = new BABYLON.Quaternion();
 
-            marker.position.copyFrom(hitTestResult.getPose().transform.position);
+            // Add an offset to position the torus 1 meter away from the user
+            const offset = new BABYLON.Vector3(0, 0, -1); // 1 meter along the negative Z-axis
+            marker.position.copyFrom(hitTestResult.getPose().transform.position).addInPlace(offset);
 
             scene.addMesh(marker);
           }
@@ -110,12 +119,12 @@
         }
 
         xrHitTest.onHitTestResultObservable.add((results) => {
-          if (placingTorus && results && results.length) {
-            // Place the torus when placingTorus is true and there's a hit test result
+          if (results && results.length) {
+            // Place the torus when there's a hit test result
             const hitTestResult = results[0];
             placeTorusAtPosition(hitTestResult);
           } else {
-            // Hide the torus when placingTorus is false or there's no hit test result
+            // Hide the torus when there's no hit test result
             if (marker) {
               marker.isVisible = false;
             }
