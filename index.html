@@ -213,9 +213,13 @@
         );
         light.intensity = 0.7;
 
-        // Create 3D objects
-        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.5 }, scene);
-        box.position.y = 0.25;
+        // Placeholder for the box
+        var boxPlaceholder = BABYLON.MeshBuilder.CreateBox(
+          "boxPlaceholder",
+          { size: 0.5 },
+          scene
+        );
+        boxPlaceholder.isVisible = false; // Hide the placeholder initially
 
         // Enable XR
         async function enableXR() {
@@ -235,18 +239,31 @@
                 "latest"
               );
 
-              // When a new plane is detected, add a mesh on it
+              // When a new plane is detected, add a placeholder on it
               xr.baseExperience.onXRPlaneDetectedObservable.add((plane) => {
                 if (plane.type === BABYLON.XRPlane.PLANE) {
-                  var planeMesh = BABYLON.Mesh.CreatePlane(
-                    "planeMesh",
-                    1,
-                    scene
-                  );
-                  planeMesh.scaling.x = planeMesh.scaling.y = 1.5;
-                  planeMesh.position.copyFrom(plane.position);
-                  planeMesh.rotation.x = -Math.PI / 2;
-                  planeMesh.visibility = 0;
+                  boxPlaceholder.isVisible = true;
+                  boxPlaceholder.position.copyFrom(plane.position);
+                }
+              });
+
+              // On a click event, render the actual box on the clicked plane
+              canvas.addEventListener("click", function (event) {
+                if (xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
+                  const hitResult = scene.pick(scene.pointerX, scene.pointerY);
+                  if (
+                    hitResult &&
+                    hitResult.hit &&
+                    hitResult.pickedMesh === boxPlaceholder
+                  ) {
+                    // Create the actual box at the placeholder position
+                    var box = BABYLON.MeshBuilder.CreateBox(
+                      "box",
+                      { size: 0.5 },
+                      scene
+                    );
+                    box.position.copyFrom(boxPlaceholder.position);
+                  }
                 }
               });
             } else {
