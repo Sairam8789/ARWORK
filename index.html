@@ -29,8 +29,7 @@
 
       // Enable AR experience and feature points visualization
       scene.createDefaultXRExperienceAsync().then((xr) => {
-        xr.enableFeature(BABYLON.WebXRFeatureName.POINTER_SELECTION);
-        xr.pointerSelection.attach();
+        xr.pointerSelection.enableTeleportation({floorMeshName: 'ground'});
 
         // Create a 3D object (e.g., a box) to move in AR
         var box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.2 }, scene);
