@@ -1,286 +1,78 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<head>
+  <title>Babylon.js AR Object Movement</title>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+  <style>
+    canvas {
+      touch-action: none; /* Disable default touch gestures on canvas */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
 
-    <title>Babylon.js sample code</title>
+  <script>
+    var canvas = document.getElementById("renderCanvas");
+    var engine = new BABYLON.Engine(canvas, true);
 
-    <!-- Babylon.js -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-    <style>
-      html,
-      body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
+    function createScene() {
+      var scene = new BABYLON.Scene(engine);
+      scene.clearColor = new BABYLON.Color3(0.8, 0.8, 0.8);
 
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
-
-      #canvasZone {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <!-- <script>
-      var sceneToRender;
-      window.addEventListener("DOMContentLoaded", function () {
-        var canvas = document.getElementById("renderCanvas");
-        var engine = createDefaultEngine();
-        if (!engine) throw "Engine should not be null.";
-
-        var scene = createScene();
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
-
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-
-        // Resize
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
-
-        async function createScene() {
-          var scene = new BABYLON.Scene(engine);
-          var camera = new BABYLON.ArcRotateCamera(
-            "cam",
-            Math.PI / 2,
-            Math.PI / 2,
-            3,
-            new BABYLON.Vector3(0, 0.5, 0),
-            scene
-          );
-          var light = new BABYLON.HemisphericLight(
-            "sun",
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
-
-          camera.wheelDeltaPercentage = 0.01;
-          camera.attachControl(canvas, true);
-          camera.lowerRadiusLimit = 1.5;
-          camera.upperRadiusLimit = 5;
-
-          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 });
-          box.position.y = 0.5;
-          scene.addMesh(box);
-
-          var xr = await scene.createDefaultXRExperienceAsync({
-            uiOptions: {
-              sessionMode: "immersive-ar",
-            },
-            optionalFeatures: true,
-          });
-
-          const fm = xr.baseExperience.featuresManager;
-
-          const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-          const anchors = fm.enableFeature(
-            BABYLON.WebXRAnchorSystem.Name,
-            "latest"
-          );
-
-          const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-            diameter: 0.15,
-            thickness: 0.05,
-          });
-          marker.isVisible = false;
-          marker.rotationQuaternion = new BABYLON.Quaternion();
-
-          hitTest.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              marker.isVisible = true;
-              hitPoint = results[0];
-              hitPoint.transformationMatrix.decompose(
-                marker.scaling,
-                marker.rotationQuaternion,
-                marker.position
-              );
-            } else {
-              marker.isVisible = false;
-            }
-          });
-
-          if (anchors) {
-            console.log("Anchors enabled");
-            // Uncomment the following lines if you have a 'chair' model to load
-            // let chair;
-            // BABYLON.SceneLoader.ImportMesh(
-            //   "",
-            //   "/",
-            //   "air_compressor_obj.glb",
-            //   scene,
-            //   function (mesh) {
-            //     chair = mesh[0].getChildTransformNodes(false)[0];
-            //     chair.isVisible = false;
-            //   }
-            // );
-
-            anchors.onAnchorAddedObservable.add((anchor) => {
-              console.log("Attaching anchor", anchor);
-              // Attach your virtual content to the anchor point
-              // chair.isVisible = true;
-              // anchor.attachedNode = chair.clone("mensch");
-              // chair.isVisible = false;
-            });
-
-            anchors.onAnchorRemovedObservable.add((anchor) => {
-              console.log("Disposing anchor", anchor);
-              if (anchor && anchor.attachedNode) {
-                anchor.attachedNode.isVisible = false;
-                anchor.attachedNode.dispose();
-              }
-            });
-          }
-
-          scene.onPointerDown = (evt, pickInfo) => {
-            if (
-              hitTest &&
-              anchors &&
-              xr.baseExperience.state === BABYLON.WebXRState.IN_XR
-            ) {
-              anchors.addAnchorPointUsingHitTestResultAsync(hitTest);
-            }
-          };
-
-          return scene;
-        }
-
-        function createDefaultEngine() {
-          return new BABYLON.Engine(canvas, true, {
-            preserveDrawingBuffer: true,
-            stencil: true,
-          });
-        }
+      // Create an AR camera
+      var arCamera = new BABYLON.WebXRCamera("ARCamera", scene, {
+        // AR options if supported by the device
       });
-    </script> -->
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // Create the Babylon.js engine
-        var canvas = document.getElementById("renderCanvas");
-        var engine = new BABYLON.Engine(canvas, true);
 
-        // Create a scene
-        var scene = new BABYLON.Scene(engine);
+      // Enable AR experience and feature points visualization
+      scene.createDefaultXRExperienceAsync().then((xr) => {
+        xr.enableFeature(BABYLON.WebXRFeatureName.POINTER_SELECTION);
+        xr.pointerSelection.attach();
 
-        // Create an ArcRotateCamera
-        var camera = new BABYLON.ArcRotateCamera(
-          "camera",
-          Math.PI / 2,
-          Math.PI / 4,
-          2,
-          BABYLON.Vector3.Zero(),
-          scene
-        );
-        camera.attachControl(canvas, true);
+        // Create a 3D object (e.g., a box) to move in AR
+        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.2 }, scene);
+        box.position.y = 0.1;
 
-        // Create lights
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-        light.intensity = 0.7;
+        // Handle user interaction to move the box
+        var isMoving = false;
+        var startPos = new BABYLON.Vector3();
 
-        // Placeholder for the box
-        var boxPlaceholder = BABYLON.MeshBuilder.CreateBox(
-          "boxPlaceholder",
-          { size: 0.5 },
-          scene
-        );
-        boxPlaceholder.isVisible = false; // Hide the placeholder initially
-
-        // Enable XR
-        async function enableXR() {
-          // Check if XR is supported by the browser
-          if ("xr" in navigator) {
-            const supported =
-              (await navigator.xr.isSessionSupported("immersive-vr")) ||
-              (await navigator.xr.isSessionSupported("immersive-ar"));
-            if (supported) {
-              const xr = await scene.createDefaultXRExperienceAsync({
-                useStablePlugins: true,
-              });
-
-              // Enable plane detection
-              xr.baseExperience.featuresManager.enableFeature(
-                BABYLON.WebXRPlaneDetector.Name,
-                "latest"
-              );
-
-              // When a new plane is detected, add a placeholder on it
-              xr.baseExperience.onXRPlaneDetectedObservable.add((plane) => {
-                if (plane.type === BABYLON.XRPlane.PLANE) {
-                  boxPlaceholder.isVisible = true;
-                  boxPlaceholder.position.copyFrom(plane.position);
-                }
-              });
-
-              // On a click event, render the actual box on the clicked plane
-              canvas.addEventListener("click", function (event) {
-                if (xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
-                  const hitResult = scene.pick(scene.pointerX, scene.pointerY);
-                  if (
-                    hitResult &&
-                    hitResult.hit &&
-                    hitResult.pickedMesh === boxPlaceholder
-                  ) {
-                    // Create the actual box at the placeholder position
-                    var box = BABYLON.MeshBuilder.CreateBox(
-                      "box",
-                      { size: 0.5 },
-                      scene
-                    );
-                    box.position.copyFrom(boxPlaceholder.position);
-                  }
-                }
-              });
-            } else {
-              console.log("WebXR is not supported in this browser or device.");
-            }
-          } else {
-            console.log("WebXR is not supported in this browser or device.");
+        xr.pointerSelection.onSelectionStartObservable.add(() => {
+          if (xr.pointerSelection.currentMesh === box) {
+            isMoving = true;
+            startPos.copyFrom(box.position);
           }
-        }
-
-        // Start the engine and enable XR
-        engine.runRenderLoop(function () {
-          scene.render();
         });
 
-        enableXR();
+        xr.pointerSelection.onSelectionEndObservable.add(() => {
+          isMoving = false;
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          if (isMoving) {
+            var pickResult = scene.pick(event.clientX, event.clientY);
+            if (pickResult.hit) {
+              box.position.copyFrom(startPos).addInPlace(pickResult.pickedPoint);
+            }
+          }
+        });
       });
-    </script>
-  </body>
+
+      return scene;
+    }
+
+    var scene = createScene();
+
+    engine.runRenderLoop(function () {
+      scene.render();
+    });
+
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+  </script>
+</body>
 </html>
