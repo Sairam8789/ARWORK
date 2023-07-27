@@ -186,154 +186,83 @@
       });
     </script> -->
     <script>
-      // 360 Image logic
-      window.addEventListener("DOMContentLoaded", function () {
+      document.addEventListener("DOMContentLoaded", function () {
+        // Create the Babylon.js engine
         var canvas = document.getElementById("renderCanvas");
+        var engine = new BABYLON.Engine(canvas, true);
 
-        var engine = null;
-        var scene = null;
-        var sceneToRender = null;
-        var createDefaultEngine = function () {
-          return new BABYLON.Engine(canvas, true, {
-            preserveDrawingBuffer: true,
-            stencil: true,
-          });
-        };
+        // Create a scene
+        var scene = new BABYLON.Scene(engine);
 
-        var createScene = async function () {
-          var pushButtonCore;
-          var index = 0;
+        // Create an ArcRotateCamera
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera",
+          Math.PI / 2,
+          Math.PI / 4,
+          2,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+        camera.attachControl(canvas, true);
 
-          var scene = new BABYLON.Scene(engine);
-          var camera = new BABYLON.ArcRotateCamera(
-            "cam",
-            Math.PI / 2,
-            Math.PI / 2,
-            3,
-            new BABYLON.Vector3(0, 0.5, 0)
-          );
-          var light = new BABYLON.HemisphericLight(
-            "sun",
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
-          var anchor = new BABYLON.TransformNode("");
+        // Create lights
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        light.intensity = 0.7;
 
-          camera.wheelDeltaPercentage = 0.01;
-          camera.attachControl(canvas, true);
-          camera.lowerRadiusLimit = 1.5;
-          camera.upperRadiusLimit = 5;
+        // Create 3D objects
+        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.5 }, scene);
+        box.position.y = 0.25;
 
-          // let chair;
-          // BABYLON.SceneLoader.ImportMesh(
-          //     "",
-          //     "/",
-          //     "chair.glb",
-          //     scene,
-          //     function (mesh) {
-          //         chair = mesh[0].getChildTransformNodes(false)[0];
-          //         chair.isVisible = false;
-          // });
+        // Enable XR
+        async function enableXR() {
+          // Check if XR is supported by the browser
+          if ("xr" in navigator) {
+            const supported =
+              (await navigator.xr.isSessionSupported("immersive-vr")) ||
+              (await navigator.xr.isSessionSupported("immersive-ar"));
+            if (supported) {
+              const xr = await scene.createDefaultXRExperienceAsync({
+                useStablePlugins: true,
+              });
 
-          // var xr = await scene.createDefaultXRExperienceAsync({floorMeshes: []})
-          // // default is vr, change to ar
-          // xr.enterExitUI["_buttons"][0].sessionMode = "immersive-ar";
-          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 });
-          box.position.y = 0.5;
-          scene.addMesh(box);
-
-          var xr = await scene.createDefaultXRExperienceAsync({
-            uiOptions: {
-              sessionMode: "immersive-ar",
-            },
-            optionalFeatures: true,
-          });
-
-          const fm = xr.baseExperience.featuresManager;
-
-          const hitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-          const anchors = fm.enableFeature(
-            BABYLON.WebXRAnchorSystem.Name,
-            "latest"
-          );
-
-          const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-            diameter: 0.15,
-            thickness: 0.05,
-          });
-          marker.isVisible = false;
-          marker.rotationQuaternion = new BABYLON.Quaternion();
-
-          hitTest.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              marker.isVisible = true;
-              hitPoint = results[0];
-              hitPoint.transformationMatrix.decompose(
-                marker.scaling,
-                marker.rotationQuaternion,
-                marker.position
+              // Enable plane detection
+              xr.baseExperience.featuresManager.enableFeature(
+                BABYLON.WebXRPlaneDetector.Name,
+                "latest"
               );
+
+              // When a new plane is detected, add a mesh on it
+              xr.baseExperience.onXRPlaneDetectedObservable.add((plane) => {
+                if (plane.type === BABYLON.XRPlane.PLANE) {
+                  var planeMesh = BABYLON.Mesh.CreatePlane(
+                    "planeMesh",
+                    1,
+                    scene
+                  );
+                  planeMesh.scaling.x = planeMesh.scaling.y = 1.5;
+                  planeMesh.position.copyFrom(plane.position);
+                  planeMesh.rotation.x = -Math.PI / 2;
+                  planeMesh.visibility = 0.5;
+                }
+              });
             } else {
-              marker.isVisible = false;
+              console.log("WebXR is not supported in this browser or device.");
             }
-          });
-
-          if (anchors) {
-            console.log("anchors attached");
-            anchors.onAnchorAddedObservable.add((anchor) => {
-              console.log("attaching", anchor);
-              chair.isVisible = true;
-              anchor.attachedNode = chair.clone("mensch");
-              chair.isVisible = false;
-            });
-
-            anchors.onAnchorRemovedObservable.add((anchor) => {
-              console.log("disposing", anchor);
-              if (anchor) {
-                anchor.attachedNode.isVisible = false;
-                anchor.attachedNode.dispose();
-              }
-            });
+          } else {
+            console.log("WebXR is not supported in this browser or device.");
           }
-
-          scene.onPointerDown = (evt, pickInfo) => {
-            if (
-              hitTest &&
-              anchors &&
-              xr.baseExperience.state === BABYLON.WebXRState.IN_XR
-            ) {
-              anchors.addAnchorPointUsingHitTestResultAsync(hitTest);
-            }
-          };
-
-          return scene;
-        };
-        var engine;
-        try {
-          engine = createDefaultEngine();
-        } catch (e) {
-          console.log(
-            "the available createEngine function failed. Creating the default engine instead"
-          );
-          engine = createDefaultEngine();
         }
-        if (!engine) throw "engine should not be null.";
-        scene = createScene();
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
 
+        // Start the engine and enable XR
         engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
+          scene.render();
         });
 
-        // Resize
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
+        enableXR();
       });
     </script>
   </body>
