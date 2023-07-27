@@ -40,15 +40,11 @@
         var isMoving = false;
         var startPos = new BABYLON.Vector3();
 
-        xr.pointerSelection.onSelectionStartObservable.add(() => {
+        xr.pointerSelection.onSelectObservable.add(() => {
           if (xr.pointerSelection.currentMesh === box) {
             isMoving = true;
             startPos.copyFrom(box.position);
           }
-        });
-
-        xr.pointerSelection.onSelectionEndObservable.add(() => {
-          isMoving = false;
         });
 
         canvas.addEventListener("pointermove", (event) => {
@@ -58,6 +54,10 @@
               box.position.copyFrom(startPos).addInPlace(pickResult.pickedPoint);
             }
           }
+        });
+
+        xr.pointerSelection.onEndObservable.add(() => {
+          isMoving = false;
         });
       });
 
