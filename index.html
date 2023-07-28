@@ -1,77 +1,84 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <title>Babylon.js AR Object Movement</title>
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-  <style>
-    canvas {
-      touch-action: none; /* Disable default touch gestures on canvas */
-    }
-  </style>
-</head>
-<body>
-  <canvas id="renderCanvas"></canvas>
+  <head>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <style>
+      body,
+      #renderCanvas {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+      const canvas = document.getElementById("renderCanvas");
+      const engine = new BABYLON.Engine(canvas, true);
 
-  <script>
-    var canvas = document.getElementById("renderCanvas");
-    var engine = new BABYLON.Engine(canvas, true);
+      const createScene = function () {
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3.Black();
 
-    function createScene() {
-      var scene = new BABYLON.Scene(engine);
-      scene.clearColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+        const alpha = Math.PI / 4;
+        const beta = Math.PI / 3;
+        const radius = 8;
+        const target = new BABYLON.Vector3(0, 0, 0);
 
-      // Create an AR camera
-      var arCamera = new BABYLON.WebXRCamera("ARCamera", scene, {
-        // AR options if supported by the device
-      });
+        const camera = new BABYLON.ArcRotateCamera(
+          "Camera",
+          alpha,
+          beta,
+          radius,
+          target,
+          scene
+        );
+        camera.attachControl(canvas, true);
 
-      // Enable AR experience and feature points visualization
-      scene.createDefaultXRExperienceAsync().then((xr) => {
-        xr.pointerSelection.enableTeleportation({floorMeshName: 'ground'});
+        const light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(1, 1, 0)
+        );
 
-        // Create a 3D object (e.g., a box) to move in AR
-        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.2 }, scene);
-        box.position.y = 0.1;
+        const box = BABYLON.MeshBuilder.CreateBox("box", {});
+        box.position.x = 0.5;
+        box.position.y = 1;
 
-        // Handle user interaction to move the box
-        var isMoving = false;
-        var startPos = new BABYLON.Vector3();
+        const boxMaterial = new BABYLON.StandardMaterial("material", scene);
+        boxMaterial.diffuseColor = BABYLON.Color3.Random();
+        box.material = boxMaterial;
 
-        xr.pointerSelection.onSelectObservable.add(() => {
-          if (xr.pointerSelection.currentMesh === box) {
-            isMoving = true;
-            startPos.copyFrom(box.position);
-          }
-        });
+        box.actionManager = new BABYLON.ActionManager(scene);
+        box.actionManager.registerAction(
+          new BABYLON.ExecuteCodeAction(
+            BABYLON.ActionManager.OnPickTrigger,
+            function (evt) {
+              const sourceBox = evt.meshUnderPointer;
+              sourceBox.position.x += 0.1;
+              sourceBox.position.y += 0.1;
 
-        canvas.addEventListener("pointermove", (event) => {
-          if (isMoving) {
-            var pickResult = scene.pick(event.clientX, event.clientY);
-            if (pickResult.hit) {
-              box.position.copyFrom(startPos).addInPlace(pickResult.pickedPoint);
+              boxMaterial.diffuseColor = BABYLON.Color3.Random();
             }
-          }
+          )
+        );
+
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {
+          width: 4,
+          height: 4,
         });
 
-        xr.pointerSelection.onEndObservable.add(() => {
-          isMoving = false;
+        const xrPromise = scene.createDefaultXRExperienceAsync({
+          floorMeshes: [ground],
         });
+
+        return xrPromise.then((xrExperience) => {
+          console.log("Done, WebXR is enabled.");
+          return scene;
+        });
+      };
+
+      createScene().then((sceneToRender) => {
+        engine.runRenderLoop(() => sceneToRender.render());
       });
-
-      return scene;
-    }
-
-    var scene = createScene();
-
-    engine.runRenderLoop(function () {
-      scene.render();
-    });
-
-    window.addEventListener("resize", function () {
-      engine.resize();
-    });
-  </script>
-</body>
+    </script>
+  </body>
 </html>
