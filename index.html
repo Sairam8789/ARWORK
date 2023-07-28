@@ -125,6 +125,40 @@
         engine = createDefaultEngine();
         scene = await createScene();
         if (!engine) throw "engine should not be null.";
+
+        // Check if XR is supported by the device
+        if (
+          BABYLON.WebXRFeatureName.XRHitTest &&
+          (await scene.isXRSessionSupportedAsync("immersive-ar"))
+        ) {
+          const xrHelper = await scene.createDefaultXRExperienceAsync({
+            uiOptions: {
+              sessionMode: "immersive-ar",
+            },
+            optionalFeatures: true,
+          });
+
+          // Enable hit testing
+          const hitTestModule =
+            xrHelper.baseExperience.featuresManager.enableFeature(
+              BABYLON.WebXRFeatureName.XRHitTest,
+              "latest",
+              { xrCompatible: true }
+            );
+
+          // Handle hit test results
+          hitTestModule.onHitTestResultObservable.add((results) => {
+            if (results.length) {
+              const hitTest = results[0];
+              if (hitTest.hitMatrix) {
+                marker.position.copyFrom(hitTest.getPose().position);
+                marker.rotationQuaternion =
+                  hitTest.getPose().rotationQuaternion;
+              }
+            }
+          });
+        }
+
         sceneToRender = scene;
         engine.runRenderLoop(function () {
           scene.render();
