@@ -1,153 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Babylon.js Web & AR Scene</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Babylon.js AR Scene</title>
     <style>
+      html,
       body {
-        margin: 0;
         overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
       }
+
       #renderCanvas {
         width: 100%;
         height: 100%;
+        touch-action: none;
       }
-      #arButtonContainer {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1;
-        /* Initially, hide the button container */
-        display: none;
-      }
-      #arButton {
-        background-color: #0078d4;
-        color: #fff;
-        font-size: 16px;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
+
+      #canvasZone {
+        width: 100%;
+        height: 100%;
       }
     </style>
   </head>
   <body>
-    <canvas id="renderCanvas"></canvas>
-    <div id="arButtonContainer">
-      <button id="arButton">Open AR</button>
-    </div>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+    <script src="https://cdn.babylonjs.com/recast.js"></script>
+    <script src="https://cdn.babylonjs.com/ammo.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
     <script>
-      window.addEventListener("DOMContentLoaded", async () => {
-        const canvas = document.getElementById("renderCanvas");
-        const arButton = document.getElementById("arButton");
-        const arButtonContainer = document.getElementById("arButtonContainer");
-        const engine = new BABYLON.Engine(canvas, true);
-        let scene; // The Babylon.js scene
-        let box; // The 3D box in the web mode
+      var canvas = document.getElementById("renderCanvas");
+      var engine = null;
+      var scene = null;
 
-        // Function to switch to AR mode
-        async function switchToARMode() {
-          // Check if AR is supported by the device
-          if (BABYLON.ARHelper && (await BABYLON.ARHelper.IsARSupported())) {
-            // Hide the AR button container
-            arButtonContainer.style.display = "none";
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
 
-            // Initialize AR session
-            const arOptions = {
-              // AR-specific options here (e.g., enabling/disabling features)
-            };
-            await BABYLON.ARHelper.InitAR(scene, arOptions);
+      var createScene = async function () {
+        var scene = new BABYLON.Scene(engine);
 
-            // Create a new AR box at the user's touch position
-            scene.onPointerDown = (evt, pickResult) => {
-              if (pickResult.hit) {
-                const arBox = BABYLON.MeshBuilder.CreateBox(
-                  "arBox",
-                  { size: 1 },
-                  scene
-                );
-                arBox.position = pickResult.pickedPoint;
-              }
-            };
+        // This creates an arc rotate camera with auto-rotation (non-mesh)
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera1",
+          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
+          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
+          5, // Distance from the target (marker)
+          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
+          scene
+        );
 
-            // Switch the active camera to ARCamera
-            scene.activeCamera = scene.getCameraByName("arCamera");
-          } else {
-            // AR not supported on this device or ARHelper is not available
-            console.log(
-              "AR not supported on this device or ARHelper is not available."
+        // This attaches the camera to the canvas
+        camera.attachControl(canvas, true);
+
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+
+        // Default intensity is 1. Let's dim the light a small amount
+        light.intensity = 0.7;
+
+        // ... Create marker torus ...
+        const marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+          diameter: 0.15,
+          thickness: 0.05,
+        });
+        marker.isVisible = true;
+        marker.rotationQuaternion = new BABYLON.Quaternion();
+        scene.addMesh(marker);
+
+        // Listen for touch or click events on the canvas
+        canvas.addEventListener("pointerdown", function (event) {
+          // Check if XR is in AR mode
+          if (scene.isInXRSession) {
+            // Place the torus at the hit test position
+            const ray = scene.createPickingRay(
+              event.clientX,
+              event.clientY,
+              BABYLON.Matrix.Identity(),
+              camera
             );
+            const hitTestResult = scene.pickWithRay(ray);
+            if (hitTestResult && hitTestResult.pickedPoint) {
+              marker.position.copyFrom(hitTestResult.pickedPoint);
+              marker.rotationQuaternion = BABYLON.Quaternion.Identity();
+            }
+          } else {
+            // Place the torus in the web scene at the clicked point
+            const pickResult = scene.pick(event.clientX, event.clientY);
+            if (pickResult.hit) {
+              marker.position.copyFrom(pickResult.pickedPoint);
+              marker.rotationQuaternion = BABYLON.Quaternion.Identity();
+            }
           }
-        }
+        });
 
-        // Create the initial web scene
-        function createWebScene() {
-          scene = new BABYLON.Scene(engine);
+        return scene;
+      };
 
-          // Create an ArcRotateCamera and position it around the scene
-          const camera = new BABYLON.ArcRotateCamera(
-            "camera",
-            -Math.PI / 2,
-            Math.PI / 4,
-            5,
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
+      async function initFunction() {
+        engine = createDefaultEngine();
+        scene = await createScene();
+        if (!engine) throw "engine should not be null.";
+        sceneToRender = scene;
+        engine.runRenderLoop(function () {
+          scene.render();
+        });
+        window.addEventListener("resize", function () {
+          engine.resize();
+        });
+      }
 
-          // Set target to look at the origin
-          camera.setTarget(BABYLON.Vector3.Zero());
-
-          // Attach camera controls to the canvas
-          camera.attachControl(canvas, true);
-
-          // Create a light and position it
-          const light = new BABYLON.HemisphericLight(
-            "light",
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
-
-          // Create a box and position it
-          box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-
-          // Animation to rotate the box
-          const animation = new BABYLON.Animation(
-            "boxAnimation",
-            "rotation.y",
-            30,
-            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-            BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE
-          );
-          const keys = [
-            { frame: 0, value: 0 },
-            { frame: 100, value: Math.PI * 2 },
-          ];
-          animation.setKeys(keys);
-          box.animations = [animation];
-          scene.beginAnimation(box, 0, 100, true);
-
-          // Render loop
-          engine.runRenderLoop(() => {
-            scene.render();
-          });
-
-          // Handle window resizing
-          window.addEventListener("resize", () => {
-            engine.resize();
-          });
-
-          // Show the AR button container when the web scene is loaded
-          arButtonContainer.style.display = "block";
-        }
-
-        // Event listener for the AR button click
-        arButton.addEventListener("click", switchToARMode);
-
-        // Create the initial web scene
-        createWebScene();
-      });
+      initFunction();
     </script>
   </body>
 </html>
