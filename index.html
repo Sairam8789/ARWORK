@@ -44,122 +44,118 @@
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
-    <script>
-      var canvas = document.getElementById("renderCanvas");
-      var engine = null;
-      var scene = null;
-      var marker;
+    
 
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
+     
+     <script>
+        var canvas = document.getElementById("renderCanvas");
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var marker;
 
-      var createScene = async function () {
-        var scene = new BABYLON.Scene(engine);
+        var createDefaultEngine = function () {
+            return new BABYLON.Engine(canvas, true, {
+                preserveDrawingBuffer: true,
+                stencil: true,
+                disableWebGL2Support: false,
+            });
+        };
 
-        // This creates an arc rotate camera with auto-rotation (non-mesh)
-        var camera = new BABYLON.ArcRotateCamera(
-          "camera1",
-          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
-          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
-          5, // Distance from the target (marker)
-          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
-          scene
-        );
+        var createScene = async function () {
+            var scene = new BABYLON.Scene(engine);
 
-        // This attaches the camera to the canvas
-        camera.attachControl(canvas, true);
-
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
-
-        // ... Create marker torus ...
-        marker = BABYLON.MeshBuilder.CreateTorus("marker", {
-          diameter: 0.15,
-          thickness: 0.05,
-        });
-        marker.isVisible = true;
-        marker.rotationQuaternion = new BABYLON.Quaternion();
-        scene.addMesh(marker);
-
-        // Listen for touch or click events on the canvas
-        canvas.addEventListener("pointerdown", function (event) {
-          // Check if XR is in AR mode
-          if (scene.isInWebXRSession) {
-            // Place the torus at the hit test position
-            const ray = scene.createPickingRay(
-              event.clientX,
-              event.clientY,
-              BABYLON.Matrix.Identity(),
-              camera
-            );
-            const hitTestResult = scene.pickWithRay(ray);
-            if (hitTestResult && hitTestResult.pickedPoint) {
-              marker.position.copyFrom(hitTestResult.pickedPoint);
-              marker.rotationQuaternion = BABYLON.Quaternion.Identity();
-            }
-          }
-        });
-
-        return scene;
-      };
-
-      async function initFunction() {
-        engine = createDefaultEngine();
-        scene = await createScene();
-        if (!engine) throw "engine should not be null.";
-
-        // Check if XR is supported by the device
-        if (engine.webvr) {
-          const xrHelper = await scene.createDefaultXRExperienceAsync({
-            uiOptions: {
-              sessionMode: "immersive-ar",
-            },
-            optionalFeatures: true,
-          });
-
-          // Enable hit testing
-          const hitTestModule =
-            xrHelper.baseExperience.featuresManager.enableFeature(
-              BABYLON.WebXRHitTest.Name,
-              "latest",
-              { xrCompatible: true }
+            // This creates an arc rotate camera with auto-rotation (non-mesh)
+            var camera = new BABYLON.ArcRotateCamera(
+                "camera1",
+                -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
+                Math.PI / 4, // Beta (vertical rotation) - rotate up-down
+                5, // Distance from the target (marker)
+                BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
+                scene
             );
 
-          // Handle hit test results
-          hitTestModule.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              const hitTest = results[0];
-              if (hitTest.hitMatrix) {
-                marker.position.copyFrom(hitTest.getPose().position);
-                marker.rotationQuaternion =
-                  hitTest.getPose().rotationQuaternion;
-              }
-            }
-          });
+            // This attaches the camera to the canvas
+            camera.attachControl(canvas, true);
+
+            // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+            var light = new BABYLON.HemisphericLight(
+                "light",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+
+            // Default intensity is 1. Let's dim the light a small amount
+            light.intensity = 0.7;
+
+            // ... Create marker torus ...
+            marker = BABYLON.MeshBuilder.CreateTorus("marker", {
+                diameter: 0.15,
+                thickness: 0.05,
+            });
+            marker.isVisible = false;
+            marker.rotationQuaternion = new BABYLON.Quaternion();
+            scene.addMesh(marker);
+
+            // Listen for touch or click events on the canvas
+            canvas.addEventListener("pointerdown", function (event) {
+                // Check if XR is in AR mode
+                if (scene.isInWebXRSession) {
+                    // Place the torus at the hit test position
+                    const ray = scene.createPickingRay(event.clientX, event.clientY, BABYLON.Matrix.Identity(), camera);
+                    const hitTestResult = scene.pickWithRay(ray);
+                    if (hitTestResult && hitTestResult.pickedPoint) {
+                        marker.position.copyFrom(hitTestResult.pickedPoint);
+                        marker.rotationQuaternion = BABYLON.Quaternion.Identity();
+                    }
+                }
+            });
+
+            return scene;
+        };
+
+        async function initFunction() {
+            engine = createDefaultEngine();
+            scene = await createScene();
+            if (!engine) throw "engine should not be null.";
+
+            // Check if XR is supported by the device
+            const xr = await scene.createDefaultXRExperienceAsync({
+                uiOptions: {
+                    sessionMode: "immersive-ar",
+                },
+                optionalFeatures: true,
+            });
+
+            // Enable hit testing
+            const hitTestModule = xr.baseExperience.featuresManager.enableFeature(
+                BABYLON.WebXRHitTest.Name,
+                'latest',
+                { xrCompatible: true }
+            );
+
+            // Handle hit test results
+            hitTestModule.onHitTestResultObservable.add((results) => {
+                if (results.length) {
+                    const hitTest = results[0];
+                    if (hitTest.hitMatrix) {
+                        marker.isVisible = true;
+                        marker.position.copyFrom(hitTest.getPose().position);
+                        marker.rotationQuaternion = hitTest.getPose().rotationQuaternion;
+                    }
+                }
+            });
+
+            sceneToRender = scene;
+            engine.runRenderLoop(function () {
+                scene.render();
+            });
+            window.addEventListener("resize", function () {
+                engine.resize();
+            });
         }
 
-        sceneToRender = scene;
-        engine.runRenderLoop(function () {
-          scene.render();
-        });
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
-      }
-
-      initFunction();
+        initFunction();
     </script>
   </body>
 </html>
