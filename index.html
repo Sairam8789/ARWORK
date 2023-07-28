@@ -1,83 +1,97 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <style>
-      body,
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Babylon.js Object Manipulation with GUI Button</title>
   </head>
   <body>
-    <canvas id="renderCanvas"></canvas>
+    <canvas
+      id="renderCanvas"
+      style="width: 100%; height: 100%; touch-action: none"
+    ></canvas>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+
     <script>
-      const canvas = document.getElementById("renderCanvas");
-      const engine = new BABYLON.Engine(canvas, true);
+      var canvas = document.getElementById("renderCanvas");
+      var engine = new BABYLON.Engine(canvas, true);
 
-      const createScene = function () {
-        const scene = new BABYLON.Scene(engine);
-        scene.clearColor = new BABYLON.Color3.Black();
+      var createScene = function () {
+        var scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.8, 0.8, 0.8);
 
-        const alpha = Math.PI / 4;
-        const beta = Math.PI / 3;
-        const radius = 8;
-        const target = new BABYLON.Vector3(0, 0, 0);
-
-        const camera = new BABYLON.ArcRotateCamera(
-          "Camera",
-          alpha,
-          beta,
-          radius,
-          target,
+        // Create an ArcRotateCamera and attach it to the scene
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera",
+          0,
+          0,
+          10,
+          new BABYLON.Vector3(0, 0, 0),
           scene
         );
         camera.attachControl(canvas, true);
 
-        const light = new BABYLON.HemisphericLight(
+        // Create a light
+        var light = new BABYLON.HemisphericLight(
           "light",
-          new BABYLON.Vector3(1, 1, 0)
+          new BABYLON.Vector3(0, 1, 0),
+          scene
         );
+        light.intensity = 0.7;
 
-        const box = BABYLON.MeshBuilder.CreateBox("box", {});
-        box.position.x = 0.5;
-        box.position.y = 1;
+        // Create a TransformNode to group the box
+        var boxGroupNode = new BABYLON.TransformNode("boxGroupNode");
 
-        const boxMaterial = new BABYLON.StandardMaterial("material", scene);
-        boxMaterial.diffuseColor = BABYLON.Color3.Random();
-        box.material = boxMaterial;
+        // Create a box
+        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
+        box.position = new BABYLON.Vector3(0, 0, 0);
+        box.parent = boxGroupNode;
 
-        box.actionManager = new BABYLON.ActionManager(scene);
-        box.actionManager.registerAction(
-          new BABYLON.ExecuteCodeAction(
-            BABYLON.ActionManager.OnPickTrigger,
-            function (evt) {
-              const sourceBox = evt.meshUnderPointer;
-              sourceBox.position.x += 0.1;
-              sourceBox.position.y += 0.1;
+        // Create GUI
+        var advancedTexture =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
-              boxMaterial.diffuseColor = BABYLON.Color3.Random();
-            }
-          )
+        // Create a TransformNode to represent the face of the box where the button will be attached
+        var buttonFaceNode = new BABYLON.TransformNode("buttonFaceNode");
+        buttonFaceNode.parent = box;
+        buttonFaceNode.position.z = 1; // Adjust the position of the button node relative to the box face (in front of the box)
+
+        // Button to move the box
+        var moveButton = BABYLON.GUI.Button.CreateSimpleButton(
+          "moveButton",
+          "Move Box"
         );
+        moveButton.width = "150px";
+        moveButton.height = "40px";
+        moveButton.color = "white";
+        moveButton.background = "green";
+        advancedTexture.addControl(moveButton);
 
-        const ground = BABYLON.MeshBuilder.CreateGround("ground", {
-          width: 4,
-          height: 4,
+        // Adjust the pivot point of the button to its center
+        moveButton.originX = 0.5;
+        moveButton.originY = 0.5;
+
+        // Set the button's parent to the face node
+        moveButton.linkWithMesh(buttonFaceNode);
+
+        // Update the button's rotation based on the box's rotation
+        scene.registerBeforeRender(function () {
+          moveButton.rotation = -boxGroupNode.rotation.y; // Negate the rotation to match the button rotation with the box's rotation
         });
 
-        const xrPromise = scene.createDefaultXRExperienceAsync({
-          floorMeshes: [ground],
-        });
-
-        return xrPromise.then((xrExperience) => {
-          console.log("Done, WebXR is enabled.");
-          return scene;
-        });
+        return scene;
       };
 
-      createScene().then((sceneToRender) => {
-        engine.runRenderLoop(() => sceneToRender.render());
+      var scene = createScene();
+
+      engine.runRenderLoop(function () {
+        scene.render();
+      });
+
+      window.addEventListener("resize", function () {
+        engine.resize();
       });
     </script>
   </body>
