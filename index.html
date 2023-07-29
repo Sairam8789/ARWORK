@@ -60,8 +60,8 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var ground = null; // Variable to hold the ground mesh
       var box = null; // Variable to hold the box mesh
+      var groundActionManager = null; // Variable to hold the ground's action manager
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -70,7 +70,6 @@
           disableWebGL2Support: false,
         });
       };
-
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
 
@@ -104,24 +103,23 @@
         const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
         // Create a ground plane for plane detection
-        ground = BABYLON.MeshBuilder.CreateGround(
+        var ground = BABYLON.MeshBuilder.CreateGround(
           "ground",
           { width: 4, height: 4 },
           scene
         );
 
-        // Update ground material to set lower opacity and color
+        // Update ground material to set lower opacity
         var groundMaterial = new BABYLON.StandardMaterial(
           "groundMaterial",
           scene
         );
         groundMaterial.alpha = 0.5; // Set the opacity (0 to 1, where 0 is transparent and 1 is fully opaque)
-        groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.5, 0.8); // Set the color (RGB values from 0 to 1)
         ground.material = groundMaterial;
 
         // Add click event listener to the ground
-        ground.actionManager = new BABYLON.ActionManager(scene);
-        ground.actionManager.registerAction(
+        groundActionManager = new BABYLON.ActionManager(scene);
+        groundActionManager.registerAction(
           new BABYLON.ExecuteCodeAction(
             BABYLON.ActionManager.OnPickTrigger,
             function (evt) {
@@ -137,13 +135,13 @@
               box.position.copyFrom(
                 evt.source.pointerInfo.pickInfo.pickedPoint
               );
+              groundActionManager.setEnabled(false); // Disable ground action manager after placing the box
             }
           )
         );
 
         return scene;
       };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
@@ -161,15 +159,9 @@
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
-
       initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
-          // Re-enable camera inputs after entering AR mode
-          sceneToRender.onBeforeCameraRenderObservable.add(function (scene) {
-            scene.activeCamera.inputs.attached.pointers.touchAngularSensibility = 1000;
-            scene.activeCamera.inputs.attached.pointers.touchMoveSensibility = 5000;
-          });
         });
       });
 
