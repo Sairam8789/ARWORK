@@ -141,6 +141,8 @@
             //marker.isVisible = false;
 
             //xrTest.isEnabled = false;
+             marker.isVisible = false;
+             xrTest.dispose();
           });
         });
 
@@ -167,11 +169,11 @@
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
-            } else {
+            } //else {
               // Box is already placed, hide the marker and disable further hit tests
-              marker.isVisible = false;
-              xrTest.isEnabled = false;
-            }
+            //   marker.isVisible = false;
+            //   xrTest.isEnabled = false;
+            // }
 
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
