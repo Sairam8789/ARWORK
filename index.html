@@ -48,95 +48,55 @@
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
-      // Global variables for the scene and the box
+      var canvas = document.getElementById("renderCanvas");
+
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
+      };
+
+      var engine = null;
       var scene = null;
+      var sceneToRender = null;
+      var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
-      var canvas = null;
 
-      // Define variables to track touch events
-      var isPanning = false;
-      var prevX = null;
-      var prevY = null;
-      var boxSelected = false;
-
-      window.addEventListener("DOMContentLoaded", function () {
-        canvas = document.getElementById("renderCanvas");
-
-        // Add touch event listeners for panning
-        canvas.addEventListener("touchstart", function (event) {
-          isPanning = true;
-          prevX = event.touches[0].clientX;
-          prevY = event.touches[0].clientY;
-
-          // Check if the touch event intersects with the box
-          var pickResult = scene.pick(
-            event.touches[0].clientX,
-            event.touches[0].clientY
-          );
-          if (pickResult.hit && pickResult.pickedMesh === box) {
-            boxSelected = true;
-          } else {
-            boxSelected = false;
-          }
-        });
-
-        canvas.addEventListener("touchmove", function (event) {
-          if (isPanning && boxSelected) {
-            var deltaX = event.touches[0].clientX - prevX;
-            var deltaY = event.touches[0].clientY - prevY;
-
-            // Update the box position based on touch movement
-            if (box) {
-              box.position.x += deltaX / 100; // Adjust the sensitivity as needed
-              box.position.z -= deltaY / 100; // Invert deltaY as Babylon.js uses left-handed coordinates for Y-axis
-            }
-
-            prevX = event.touches[0].clientX;
-            prevY = event.touches[0].clientY;
-          }
-        });
-
-        canvas.addEventListener("touchend", function () {
-          isPanning = false;
-          boxSelected = false;
-        });
-
-        createScene().then(function (createdScene) {
-          scene = createdScene;
-          sceneToRender = scene;
-          engine.runRenderLoop(function () {
-            if (sceneToRender) {
-              sceneToRender.render();
-            }
-          });
-        });
-      });
-
-      // Create the Babylon.js scene and the box
-      var createScene = async function () {
-        var engine = new BABYLON.Engine(canvas, true, {
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
           stencil: true,
           disableWebGL2Support: false,
         });
+      };
 
+      var createScene = async function () {
+        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
+        // This creates and positions a free camera (non-mesh)
         var camera = new BABYLON.FreeCamera(
           "camera1",
           new BABYLON.Vector3(0, 5, -10),
           scene
         );
 
+        // This targets the camera to scene origin
         camera.setTarget(BABYLON.Vector3.Zero());
+
+        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
 
+        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -146,9 +106,9 @@
           optionalFeatures: true,
         });
 
-        var fm = xr.baseExperience.featuresManager;
+        const fm = xr.baseExperience.featuresManager;
 
-        var xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
@@ -161,42 +121,75 @@
         marker.isVisible = false;
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrTest.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              if (!box || !box.position.equals(marker.position)) {
-                marker.isVisible = true;
-              } else {
-                // Box is already placed, hide the marker and disable further hit tests
-                marker.isVisible = false;
-                xrTest.isEnabled = false;
-              }
-
-              let hitTest = results[0];
-              hitTest.transformationMatrix.decompose(
-                marker.scaling,
-                marker.rotationQuaternion,
-                marker.position
-              );
-            } else {
-              marker.isVisible = false;
+          xrSessionInit = true; // XR session is now initialized
+          session.addEventListener("select", function () {
+            if (!marker.isVisible) {
+              return;
             }
+
+            if (!box) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            }
+
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.scaling = marker.scaling.clone();
+            marker.isVisible = false;
+
+            xrTest.isEnabled = false;
           });
         });
 
-        // Create the box
-        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-        box.material = new BABYLON.StandardMaterial("boxMat", scene);
-        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-        box.isVisible = false;
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (results.length) {
+            if (!box || !box.position.equals(marker.position)) {
+              marker.isVisible = true;
+            }
+
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
 
         return scene;
       };
 
-      // Resize the canvas when the window is resized
+      window.initFunction = async function () {
+        var asyncEngineCreation = async function () {
+          try {
+            return createDefaultEngine();
+          } catch (e) {
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
+            return createDefaultEngine();
+          }
+        };
+
+        window.engine = await asyncEngineCreation();
+        if (!engine) throw "engine should not be null.";
+        startRenderLoop(engine, canvas);
+        window.scene = createScene();
+      };
+
+      initFunction().then(() => {
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
+      });
+
+      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
-
     </script>
   </body>
 </html>
