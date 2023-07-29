@@ -113,23 +113,6 @@
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        // Add a click event listener to the canvas
-        canvas.addEventListener("click", function (event) {
-          // Perform hit testing to get the AR environment position at the click location
-          xrTest.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              const hitTest = results[0];
-              if (hitTest.hitMatrix) {
-                // Create and position the box at the hit test position
-                const box = BABYLON.MeshBuilder.CreateBox("box", {
-                  size: 0.2,
-                });
-                box.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              }
-            }
-          });
-        });
-
         return scene;
       };
 
@@ -156,6 +139,22 @@
       initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
+
+          // Add a click event listener to the canvas
+          canvas.addEventListener("click", function (event) {
+            if (sceneToRender) {
+              const pickResult = sceneToRender.pick(
+                sceneToRender.pointerX,
+                sceneToRender.pointerY
+              );
+              if (pickResult.hit) {
+                const box = BABYLON.MeshBuilder.CreateBox("box", {
+                  size: 0.2,
+                });
+                box.position.copyFrom(pickResult.pickedPoint);
+              }
+            }
+          });
         });
       });
 
