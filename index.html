@@ -5,15 +5,12 @@
     <title>Babylon.js sample code</title>
 
     <!-- Babylon.js -->
-    <script src="https://preview.babylonjs.com/babylon.js"></script>
-    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://preview.babylonjs.com/gui/babylon.gui.js"></script>
-    <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-    <script src="https://preview.babylonjs.com/babylon.glTF2FileLoader.js"></script>
-    <script src="https://preview.babylonjs.com/babylonjs.materials.min.js"></script>
-    <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://preview.babylonjs.com/behaviors/babylon.behaviors.min.js"></script>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
 
     <style>
       html,
@@ -48,21 +45,33 @@
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+        var camera = new BABYLON.FreeCamera(
+          "camera1",
+          new BABYLON.Vector3(0, 5, -10),
+          scene
+        );
         camera.setTarget(BABYLON.Vector3.Zero());
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
 
         var xr = await scene.createDefaultXRExperienceAsync({
-          optionalFeatures: true
+          optionalFeatures: true,
         });
 
         xr.baseExperience.enterExitUI["_buttons"].forEach(function (button) {
-          button.imageUrl = "https://immersive-web.github.io/webxr-input-profiles/packages/assets/img/xr-button.svg";
+          button.imageUrl =
+            "https://immersive-web.github.io/webxr-input-profiles/packages/assets/img/xr-button.svg";
         });
 
         const fm = xr.baseExperience.featuresManager;
         const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
-        const xrAnchors = fm.enableFeature(BABYLON.WebXRAnchorSystem.Name, "latest");
+        const xrAnchors = fm.enableFeature(
+          BABYLON.WebXRAnchorSystem.Name,
+          "latest"
+        );
 
         box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.1 }, scene);
         box.isVisible = false;
