@@ -1,192 +1,119 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Babylon.js sample code</title>
+<script>
+    var canvas = document.getElementById("renderCanvas");
 
-    <!-- Babylon.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+    var startRenderLoop = function (engine, canvas) {
+      engine.runRenderLoop(function () {
+        if (sceneToRender && sceneToRender.activeCamera) {
+          sceneToRender.render();
+        }
+      });
+    };
 
-    <style>
-      html,
-      body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
+    var engine = null;
+    var scene = null;
+    var sceneToRender = null;
+    var ground = null; // Variable to hold the ground mesh
+    var box = null; // Variable to hold the box mesh
 
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
+    var createDefaultEngine = function () {
+      return new BABYLON.Engine(canvas, true, {
+        preserveDrawingBuffer: true,
+        stencil: true,
+        disableWebGL2Support: false,
+      });
+    };
 
-      #canvasZone {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <script>
-      var canvas = document.getElementById("renderCanvas");
+    var createScene = async function () {
+      var scene = new BABYLON.Scene(engine);
 
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-      };
+      var camera = new BABYLON.FreeCamera(
+        "camera1",
+        new BABYLON.Vector3(0, 1, -5),
+        scene
+      );
 
-      var engine = null;
-      var scene = null;
-      var sceneToRender = null;
-      var ground = null; // Variable to hold the ground mesh
-      var box = null; // Variable to hold the box mesh
+      camera.setTarget(BABYLON.Vector3.Zero());
 
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
+      camera.attachControl(canvas, true);
 
-      var createScene = async function () {
-        var scene = new BABYLON.Scene(engine);
+      var light = new BABYLON.HemisphericLight(
+        "light",
+        new BABYLON.Vector3(0, 1, 0),
+        scene
+      );
 
-        var camera = new BABYLON.FreeCamera(
-          "camera1",
-          new BABYLON.Vector3(0, 1, -5),
-          scene
-        );
+      light.intensity = 0.7;
 
-        camera.setTarget(BABYLON.Vector3.Zero());
+      var xr = await scene.createDefaultXRExperienceAsync({
+        uiOptions: {
+          sessionMode: "immersive-ar",
+        },
+        optionalFeatures: true,
+      });
 
-        camera.attachControl(canvas, true);
+      const fm = xr.baseExperience.featuresManager;
 
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
+      const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        light.intensity = 0.7;
+      // Create a ground plane for plane detection
+      ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 4, height: 4 }, scene);
 
-        var xr = await scene.createDefaultXRExperienceAsync({
-          uiOptions: {
-            sessionMode: "immersive-ar",
-          },
-          optionalFeatures: true,
-        });
+      // Update ground material to set lower opacity and color
+      var groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+      groundMaterial.alpha = 0.5; // Set the opacity (0 to 1, where 0 is transparent and 1 is fully opaque)
+      groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.5, 0.8); // Set the color (RGB values from 0 to 1)
+      ground.material = groundMaterial;
 
-        const fm = xr.baseExperience.featuresManager;
-
-        const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        // Create a ground plane for plane detection
-        ground = BABYLON.MeshBuilder.CreateGround(
-          "ground",
-          { width: 4, height: 4 },
-          scene
-        );
-
-        // Update ground material to set lower opacity and color
-        var groundMaterial = new BABYLON.StandardMaterial(
-          "groundMaterial",
-          scene
-        );
-        groundMaterial.alpha = 0.5; // Set the opacity (0 to 1, where 0 is transparent and 1 is fully opaque)
-        groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.5, 0.8); // Set the color (RGB values from 0 to 1)
-        ground.material = groundMaterial;
-
-        // Add click event listener to the ground
-        ground.actionManager = new BABYLON.ActionManager(scene);
-        ground.actionManager.registerAction(
-          new BABYLON.ExecuteCodeAction(
-            BABYLON.ActionManager.OnPickTrigger,
-            function (evt) {
-              if (!box) {
-                // Create the box if not already created
-                box = BABYLON.MeshBuilder.CreateBox(
-                  "box",
-                  { size: 0.1 },
-                  scene
-                );
-              }
-              box.isVisible = true; // Show the box when the ground is clicked
-              box.position.copyFrom(
-                evt.source.pointerInfo.pickInfo.pickedPoint
-              );
+      // Add click event listener to the ground
+      ground.actionManager = new BABYLON.ActionManager(scene);
+      ground.actionManager.registerAction(
+        new BABYLON.ExecuteCodeAction(
+          BABYLON.ActionManager.OnPickTrigger,
+          function (evt) {
+            if (!box) {
+              // Create the box if not already created
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.1 }, scene);
             }
-          )
-        );
-
-        xrHitTest.onHitTestResultObservable.add((results) => {
-          if (results.length > 0) {
-            camera.inputs.attached.pointers.touches.forEach((touch) => {
-              touch.touchStartX = touch.pageX;
-              touch.touchStartY = touch.pageY;
-            });
-            camera.inputs.attached.pointers.onTouchMove = function (e) {
-              var offsetX = e.touches[0].pageX - e.touches[0].touchStartX;
-              var offsetY = e.touches[0].pageY - e.touches[0].touchStartY;
-              camera.cameraRotation.y += offsetX / 100;
-              camera.cameraRotation.x += offsetY / 100;
-            };
+            box.isVisible = true; // Show the box when the ground is clicked
+            box.position.copyFrom(evt.source.pointerInfo.pickInfo.pickedPoint);
           }
-        });
+        )
+      );
 
-        return scene;
+      return scene;
+    };
+
+    window.initFunction = async function () {
+      var asyncEngineCreation = async function () {
+        try {
+          return createDefaultEngine();
+        } catch (e) {
+          console.log(
+            "the available createEngine function failed. Creating the default engine instead"
+          );
+          return createDefaultEngine();
+        }
       };
 
-      window.initFunction = async function () {
-        var asyncEngineCreation = async function () {
-          try {
-            return createDefaultEngine();
-          } catch (e) {
-            console.log(
-              "the available createEngine function failed. Creating the default engine instead"
-            );
-            return createDefaultEngine();
-          }
-        };
+      window.engine = await asyncEngineCreation();
+      if (!engine) throw "engine should not be null.";
+      startRenderLoop(engine, canvas);
+      window.scene = createScene();
+    };
 
-        window.engine = await asyncEngineCreation();
-        if (!engine) throw "engine should not be null.";
-        startRenderLoop(engine, canvas);
-        window.scene = createScene();
-      };
-
-      initFunction().then(() => {
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
+    initFunction().then(() => {
+      scene.then((returnedScene) => {
+        sceneToRender = returnedScene;
+        // Re-enable camera inputs after entering AR mode
+        sceneToRender.onBeforeCameraRenderObservable.add(function (scene) {
+          scene.activeCamera.inputs.attached.pointers.touchAngularSensibility = 1000;
+          scene.activeCamera.inputs.attached.pointers.touchMoveSensibility = 5000;
         });
       });
+    });
 
-      // Resize
-      window.addEventListener("resize", function () {
-        engine.resize();
-      });
-    </script>
-  </body>
-</html>
+    // Resize
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+  </script>
