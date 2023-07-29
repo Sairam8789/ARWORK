@@ -113,6 +113,28 @@
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
+        // Create a flag to indicate if a click event has occurred
+        var isClickHandled = false;
+
+        // Add a click event listener to the canvas
+        canvas.addEventListener("click", function (event) {
+          if (!isClickHandled && sceneToRender) {
+            const pickResult = sceneToRender.pick(
+              sceneToRender.pointerX,
+              sceneToRender.pointerY
+            );
+            if (pickResult.hit) {
+              const box = BABYLON.MeshBuilder.CreateBox("box", {
+                size: 0.2,
+              });
+              box.position.copyFrom(pickResult.pickedPoint);
+
+              // Set the flag to true to avoid adding more boxes with the same click
+              isClickHandled = true;
+            }
+          }
+        });
+
         return scene;
       };
 
@@ -134,22 +156,6 @@
         startRenderLoop(engine, canvas);
         window.scene = createScene().then((returnedScene) => {
           sceneToRender = returnedScene;
-
-          // Add a click event listener to the canvas
-          canvas.addEventListener("click", function (event) {
-            if (sceneToRender) {
-              const pickResult = sceneToRender.pick(
-                sceneToRender.pointerX,
-                sceneToRender.pointerY
-              );
-              if (pickResult.hit) {
-                const box = BABYLON.MeshBuilder.CreateBox("box", {
-                  size: 0.2,
-                });
-                box.position.copyFrom(pickResult.pickedPoint);
-              }
-            }
-          });
         });
       };
 
