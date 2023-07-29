@@ -1,168 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Babylon.js AR Scene</title>
-    <style>
-      html,
-      body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
-
-      #canvasZone {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Babylon.js Object Manipulation with GUI Button</title>
   </head>
   <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+    <canvas
+      id="renderCanvas"
+      style="width: 100%; height: 100%; touch-action: none"
+    ></canvas>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
     <script>
       var canvas = document.getElementById("renderCanvas");
-      var engine = null;
-      var scene = null;
-      var sceneToRender = null;
-      var box;
+      var engine = new BABYLON.Engine(canvas, true);
 
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
-
-      var createScene = async function () {
+      var createScene = function () {
         var scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.8, 0.8, 0.8);
 
-        // This creates an arc rotate camera with auto-rotation (non-mesh)
+        // Create an ArcRotateCamera and attach it to the scene
         var camera = new BABYLON.ArcRotateCamera(
-          "camera1",
-          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
-          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
-          5, // Distance from the target (marker)
-          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
+          "camera",
+          0,
+          0,
+          10,
+          new BABYLON.Vector3(0, 0, 0),
           scene
         );
-
-        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+        // Create a light
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
-
-        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
-        // ... Create box ...
-        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 });
-        box.isVisible = true; // Ensure the box is visible initially
-        scene.addMesh(box);
+        // Create a TransformNode to group the box
+        var boxGroupNode = new BABYLON.TransformNode("boxGroupNode");
 
-        // Listen for touch or click events on the canvas
-        canvas.addEventListener("pointerdown", function (event) {
-          // Check if XR is in AR mode
-          if (scene.isInWebXRSession) {
-            // Place the box at the hit test position
-            const ray = scene.createPickingRay(
-              event.clientX,
-              event.clientY,
-              BABYLON.Matrix.Identity(),
-              camera
-            );
-            const hitTestResult = scene.pickWithRay(ray);
-            if (hitTestResult && hitTestResult.pickedPoint) {
-              box.isVisible = true;
-              box.position.copyFrom(hitTestResult.pickedPoint);
-            }
-          } else {
-            // If not in AR mode, show the box at the click position
-            var pickResult = scene.pick(scene.pointerX, scene.pointerY);
-            if (pickResult.hit) {
-              box.isVisible = true;
-              box.position.copyFrom(pickResult.pickedPoint);
-            }
-          }
+        // Create a box
+        var box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
+        box.position = new BABYLON.Vector3(0, 0, 0);
+        box.parent = boxGroupNode;
+
+        // Create GUI
+        var advancedTexture =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        // Create a TransformNode to represent the face of the box where the button will be attached
+        var buttonFaceNode = new BABYLON.TransformNode("buttonFaceNode");
+        buttonFaceNode.parent = box;
+        buttonFaceNode.position.z = 1; // Adjust the position of the button node relative to the box face (in front of the box)
+
+        // Button to move the box
+        var moveButton = BABYLON.GUI.Button.CreateSimpleButton(
+          "moveButton",
+          "Move Box"
+        );
+        moveButton.width = "150px";
+        moveButton.height = "40px";
+        moveButton.color = "white";
+        moveButton.background = "green";
+        advancedTexture.addControl(moveButton);
+
+        // Adjust the pivot point of the button to its center
+        moveButton.originX = 0.5;
+        moveButton.originY = 0.5;
+
+        // Set the button's parent to the face node
+        moveButton.linkWithMesh(buttonFaceNode);
+
+        // Update the button's rotation based on the box's rotation
+        scene.registerBeforeRender(function () {
+          moveButton.rotation = -boxGroupNode.rotation.y; // Negate the rotation to match the button rotation with the box's rotation
         });
 
         return scene;
       };
 
-      async function initFunction() {
-        engine = createDefaultEngine();
-        scene = await createScene();
-        if (!engine) throw "engine should not be null.";
+      var scene = createScene();
 
-        // Check if XR is supported by the device
-        if (engine.webxr) {
-          const xrHelper = await scene.createDefaultXRExperienceAsync({
-            uiOptions: {
-              sessionMode: "immersive-ar",
-            },
-            optionalFeatures: true,
-          });
+      engine.runRenderLoop(function () {
+        scene.render();
+      });
 
-          // Enable hit testing
-          const hitTestModule =
-            xrHelper.baseExperience.featuresManager.enableFeature(
-              BABYLON.WebXRHitTest.Name,
-              "latest",
-              { xrCompatible: true }
-            );
-
-          // Handle hit test results
-          hitTestModule.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-              const hitTest = results[0];
-              if (hitTest.hitMatrix) {
-                box.isVisible = true;
-                box.position.copyFrom(hitTest.getPose().position);
-              }
-            }
-          });
-        }
-
-        sceneToRender = scene;
-        engine.runRenderLoop(function () {
-          scene.render();
-        });
-        window.addEventListener("resize", function () {
-          engine.resize();
-        });
-      }
-
-      initFunction();
+      window.addEventListener("resize", function () {
+        engine.resize();
+      });
     </script>
   </body>
 </html>
