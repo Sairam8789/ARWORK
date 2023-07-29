@@ -142,6 +142,11 @@
       // Hide the marker and disable further hit tests
       marker.isVisible = false;
       xrTest.dispose();
+       // Set the camera target to the position of the placed box
+      scene.activeCamera.setTarget(box.position);
+
+      // Set a fixed radius to control the camera distance from the box
+      scene.activeCamera.radius = 5; // Adjust the value as needed
 
       // Disable camera position updates to stabilize the box
       scene.activeCamera.trackingEnabled = false;
