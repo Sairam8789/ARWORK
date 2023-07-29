@@ -1,52 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <title>Babylon.js sample code</title>
-
-  <!-- Babylon.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-  <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-  <script src="https://cdn.babylonjs.com/recast.js"></script>
-  <script src="https://cdn.babylonjs.com/ammo.js"></script>
-  <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-  <script src="https://cdn.babylonjs.com/cannon.js"></script>
-  <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-  <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-  <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-  <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-  <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-  <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
-  <style>
-    html,
-    body {
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-
-    #renderCanvas {
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
-
-    #canvasZone {
-      width: 100%;
-      height: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-  <script>
+<script>
     var canvas = document.getElementById("renderCanvas");
 
     var startRenderLoop = function (engine, canvas) {
@@ -62,7 +14,6 @@
     var sceneToRender = null;
     var ground = null; // Variable to hold the ground mesh
     var box = null; // Variable to hold the box mesh
-    var groundVisible = true; // Flag to track the ground visibility
 
     var createDefaultEngine = function () {
       return new BABYLON.Engine(canvas, true, {
@@ -125,19 +76,10 @@
             }
             box.isVisible = true; // Show the box when the ground is clicked
             box.position.copyFrom(evt.source.pointerInfo.pickInfo.pickedPoint);
-            groundVisible = false; // Hide the ground
+            ground.isVisible = false; // Hide the ground after click
           }
         )
       );
-
-      // Update function to handle ground visibility
-      scene.onBeforeRenderObservable.add(() => {
-        if (ground && groundVisible) {
-          ground.isVisible = true;
-        } else {
-          ground.isVisible = false;
-        }
-      });
 
       return scene;
     };
@@ -171,5 +113,3 @@
       engine.resize();
     });
   </script>
-</body>
-</html>
