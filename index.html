@@ -132,12 +132,7 @@
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
         startRenderLoop(engine, canvas);
-        window.scene = createScene();
-      };
-
-      // Start the scene after initialization
-      initFunction().then(() => {
-        scene.then((returnedScene) => {
+        window.scene = createScene().then((returnedScene) => {
           sceneToRender = returnedScene;
 
           // Add a click event listener to the canvas
@@ -156,7 +151,10 @@
             }
           });
         });
-      });
+      };
+
+      // Start the scene after initialization
+      initFunction();
 
       // Resize the canvas when the window size changes
       window.addEventListener("resize", function () {
