@@ -120,66 +120,68 @@
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
+        // Detect pointer events to handle camera movement
+        var cameraMoving = false;
+        canvas.addEventListener("pointerdown", function (event) {
+          cameraMoving = true;
+        });
+
+        canvas.addEventListener("pointerup", function (event) {
+          cameraMoving = false;
+        });
+
+        canvas.addEventListener("pointermove", function (event) {
+          if (cameraMoving && box) {
+            // Adjust camera position and target to move around the box
+            var alpha = (event.movementX / canvas.width) * Math.PI * 2;
+            var beta = (event.movementY / canvas.height) * Math.PI * 2;
+
+            scene.activeCamera.alpha -= alpha;
+            scene.activeCamera.beta -= beta;
+
+            scene.activeCamera.target = box.position;
+          }
+        });
+
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-    xrSessionInit = true; // XR session is now initialized
-    session.addEventListener("select", function () {
-      if (!marker.isVisible) {
-        return;
-      }
+          xrSessionInit = true; // XR session is now initialized
+          session.addEventListener("select", function () {
+            if (!marker.isVisible) {
+              return;
+            }
 
-      if (!box) {
-        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-        box.material = new BABYLON.StandardMaterial("boxMat", scene);
-        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            if (!box) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
 
-        // Set a fixed scaling for the box
-        box.scaling = new BABYLON.Vector3(1, 1, 1);
-      }
+              // Set a fixed scaling for the box
+              box.scaling = new BABYLON.Vector3(1, 1, 1);
+            }
 
-      box.position = marker.position.clone();
-      box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
 
-      // Hide the marker and disable further hit tests
-      marker.isVisible = false;
-      xrTest.dispose();
-       // Set the camera target to the position of the placed box
-      scene.activeCamera.setTarget(box.position);
+            // Hide the marker and disable further hit tests
+            marker.isVisible = false;
+            xrTest.dispose();
 
-      // Set a fixed radius to control the camera distance from the box
-      scene.activeCamera.radius = 5; // Adjust the value as needed
+            // Set the camera target to the position of the placed box
+            scene.activeCamera.setTarget(box.position);
 
-      // Disable camera position updates to stabilize the box
-      scene.activeCamera.trackingEnabled = false;
-    });
-  });
-        //   xrTest.onHitTestResultObservable.add((results) => {
-        //     if (results.length) {
-        //       if (!box || !box.position.equals(marker.position)) {
-        //         marker.isVisible = true;
-        //       }
+            // Set a fixed radius to control the camera distance from the box
+            scene.activeCamera.radius = 5; // Adjust the value as needed
 
-        //       let hitTest = results[0];
-        //       hitTest.transformationMatrix.decompose(
-        //         marker.scaling,
-        //         marker.rotationQuaternion,
-        //         marker.position
-        //       );
-        //     } else {
-        //       marker.isVisible = false;
-        //     }
-        //   });
+            // Disable camera position updates to stabilize the box
+            scene.activeCamera.trackingEnabled = false;
+          });
+        });
 
-        //   return scene;
-        // };
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
-            } //else {
-              // Box is already placed, hide the marker and disable further hit tests
-            //   marker.isVisible = false;
-            //   xrTest.isEnabled = false;
-            // }
+            }
 
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
@@ -191,8 +193,10 @@
             marker.isVisible = false;
           }
         });
+
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
