@@ -24,6 +24,7 @@
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
     <style>
+      /* CSS styles */
       html,
       body {
         overflow: hidden;
@@ -46,8 +47,11 @@
     </style>
   </head>
   <body>
+    <!-- The canvas element where Babylon.js will render the 3D scene -->
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+
     <script>
+      // JavaScript code for the Babylon.js 3D scene
       var canvas = document.getElementById("renderCanvas");
 
       var startRenderLoop = function (engine, canvas) {
@@ -61,6 +65,7 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
+
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -96,6 +101,7 @@
         // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
+        // Set up WebXR experience
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
@@ -103,33 +109,31 @@
           optionalFeatures: true,
         });
 
+        // Enable WebXR hit testing
         const fm = xr.baseExperience.featuresManager;
-
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-       const marker = BABYLON.MeshBuilder.CreateBox("marker", {
-          size: 0.2, // Set the size of the box
-        });
-        marker.isVisible = false;
-        marker.rotationQuaternion = new BABYLON.Quaternion();
-
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            marker.isVisible = true;
-            const hitTest = results[0];
-            if (hitTest.hitMatrix) {
-              // Use the hitMatrix to get the position of the hit test
-              marker.position.copyFrom(hitTest.hitMatrix.getTranslation());
-              marker.rotationQuaternion =
-                hitTest.hitMatrix.getRotationQuaternion();
+        // Add a click event listener to the canvas
+        canvas.addEventListener("click", function (event) {
+          // Perform hit testing to get the AR environment position at the click location
+          xrTest.onHitTestResultObservable.add((results) => {
+            if (results.length) {
+              const hitTest = results[0];
+              if (hitTest.hitMatrix) {
+                // Create and position the box at the hit test position
+                const box = BABYLON.MeshBuilder.CreateBox("box", {
+                  size: 0.2,
+                });
+                box.position.copyFrom(hitTest.hitMatrix.getTranslation());
+              }
             }
-          } else {
-            marker.isVisible = false;
-          }
+          });
         });
 
         return scene;
       };
+
+      // Initialize the Babylon.js engine and scene
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
@@ -147,13 +151,15 @@
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
+
+      // Start the scene after initialization
       initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
         });
       });
 
-      // Resize
+      // Resize the canvas when the window size changes
       window.addEventListener("resize", function () {
         engine.resize();
       });
