@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>Babylon.js sample code</title>
 
     <!-- Babylon.js -->
@@ -45,7 +45,9 @@
     </style>
   </head>
   <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <div id="canvasZone">
+      <canvas id="renderCanvas"></canvas>
+    </div>
     <script>
       var canvas = document.getElementById("renderCanvas");
 
@@ -60,8 +62,8 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var box = null; // Variable to hold the box mesh
-      var groundActionManager = null; // Variable to hold the ground's action manager
+      var box = null;
+      var groundActionManager = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -70,6 +72,7 @@
           disableWebGL2Support: false,
         });
       };
+
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
 
@@ -80,7 +83,6 @@
         );
 
         camera.setTarget(BABYLON.Vector3.Zero());
-
         camera.attachControl(canvas, true);
 
         var light = new BABYLON.HemisphericLight(
@@ -95,35 +97,31 @@
           uiOptions: {
             sessionMode: "immersive-ar",
           },
-          optionalFeatures: true,
+          optionalFeatures: ["hit-test", "anchors"],
         });
 
         const fm = xr.baseExperience.featuresManager;
-
         const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        const xrAnchors = fm.enableFeature(BABYLON.WebXRAnchorSystem, "latest");
 
-        // Create a ground plane for plane detection
         var ground = BABYLON.MeshBuilder.CreateGround(
           "ground",
           { width: 4, height: 4 },
           scene
         );
 
-        // Update ground material to set lower opacity
         var groundMaterial = new BABYLON.StandardMaterial(
           "groundMaterial",
           scene
         );
-        groundMaterial.alpha = 0.5; // Set the opacity (0 to 1, where 0 is transparent and 1 is fully opaque)
+        groundMaterial.alpha = 0.5;
         ground.material = groundMaterial;
 
-        // Add click event listener to the ground
-        var groundActionManager = new BABYLON.ActionManager(scene);
-        groundActionManager.registerAction(
+        ground.actionManager = new BABYLON.ActionManager(scene);
+        ground.actionManager.registerAction(
           new BABYLON.ExecuteCodeAction(
             BABYLON.ActionManager.OnPickTrigger,
             function (evt) {
-              // If the box doesn't exist, create it
               if (!box) {
                 box = BABYLON.MeshBuilder.CreateBox(
                   "box",
@@ -131,21 +129,15 @@
                   scene
                 );
               }
-              // Position the box at the click point and make it visible
               box.position.copyFrom(evt.pickInfo.pickedPoint);
               box.isVisible = true;
-
-              // Hide the ground
               ground.isVisible = false;
-               ground.isPickable = false;
-               camera.attachControl(canvas, true);
             }
           )
         );
-        ground.actionManager = groundActionManager; // This line is added here.
-
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
@@ -163,13 +155,13 @@
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
+
       initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
         });
       });
 
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
