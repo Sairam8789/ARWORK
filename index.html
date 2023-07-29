@@ -61,10 +61,13 @@
           optionalFeatures: true,
         });
 
+        xr.baseExperience.onStateChangedObservable.add((state) => {
+    if (state === BABYLON.WebXRState.IN_XR) {
         xr.baseExperience.enterExitUI["_buttons"].forEach(function (button) {
-          button.imageUrl =
-            "https://immersive-web.github.io/webxr-input-profiles/packages/assets/img/xr-button.svg";
+            button.imageUrl = "https://immersive-web.github.io/webxr-input-profiles/packages/assets/img/xr-button.svg";
         });
+    }
+});
 
         const fm = xr.baseExperience.featuresManager;
         const xrHitTest = fm.enableFeature(BABYLON.WebXRHitTest.Name, "latest");
