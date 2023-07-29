@@ -141,6 +141,9 @@
           )
         );
 
+        // Disable camera inputs during AR session
+        xr.baseExperience.camera.inputs.clear();
+
         return scene;
       };
 
