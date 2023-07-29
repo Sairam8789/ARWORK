@@ -141,8 +141,20 @@
           )
         );
 
-        // Disable camera inputs during AR session
-        xr.baseExperience.camera.inputs.clear();
+        xrHitTest.onHitTestResultObservable.add((results) => {
+          if (results.length > 0) {
+            camera.inputs.attached.pointers.touches.forEach((touch) => {
+              touch.touchStartX = touch.pageX;
+              touch.touchStartY = touch.pageY;
+            });
+            camera.inputs.attached.pointers.onTouchMove = function (e) {
+              var offsetX = e.touches[0].pageX - e.touches[0].touchStartX;
+              var offsetY = e.touches[0].pageY - e.touches[0].touchStartY;
+              camera.cameraRotation.y += offsetX / 100;
+              camera.cameraRotation.x += offsetY / 100;
+            };
+          }
+        });
 
         return scene;
       };
