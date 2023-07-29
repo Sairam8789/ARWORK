@@ -144,10 +144,33 @@
           });
         });
 
+        //   xrTest.onHitTestResultObservable.add((results) => {
+        //     if (results.length) {
+        //       if (!box || !box.position.equals(marker.position)) {
+        //         marker.isVisible = true;
+        //       }
+
+        //       let hitTest = results[0];
+        //       hitTest.transformationMatrix.decompose(
+        //         marker.scaling,
+        //         marker.rotationQuaternion,
+        //         marker.position
+        //       );
+        //     } else {
+        //       marker.isVisible = false;
+        //     }
+        //   });
+
+        //   return scene;
+        // };
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
+            } else {
+              // Box is already placed, hide the marker and disable further hit tests
+              marker.isVisible = false;
+              xrTest.isEnabled = false;
             }
 
             let hitTest = results[0];
@@ -160,10 +183,8 @@
             marker.isVisible = false;
           }
         });
-
         return scene;
       };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
