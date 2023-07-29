@@ -51,6 +51,7 @@
       // Global variables for the scene and the box
       var scene = null;
       var box = null;
+      var canvas = null;
 
       // Define variables to track touch events
       var isPanning = false;
@@ -58,40 +59,57 @@
       var prevY = null;
       var boxSelected = false;
 
-      // Add touch event listeners for panning
-      canvas.addEventListener("touchstart", function (event) {
-        isPanning = true;
-        prevX = event.touches[0].clientX;
-        prevY = event.touches[0].clientY;
+      window.addEventListener("DOMContentLoaded", function () {
+        canvas = document.getElementById("renderCanvas");
 
-        // Check if the touch event intersects with the box
-        var pickResult = scene.pick(event.touches[0].clientX, event.touches[0].clientY);
-        if (pickResult.hit && pickResult.pickedMesh === box) {
-          boxSelected = true;
-        } else {
-          boxSelected = false;
-        }
-      });
-
-      canvas.addEventListener("touchmove", function (event) {
-        if (isPanning && boxSelected) {
-          var deltaX = event.touches[0].clientX - prevX;
-          var deltaY = event.touches[0].clientY - prevY;
-
-          // Update the box position based on touch movement
-          if (box) {
-            box.position.x += deltaX / 100; // Adjust the sensitivity as needed
-            box.position.z -= deltaY / 100; // Invert deltaY as Babylon.js uses left-handed coordinates for Y-axis
-          }
-
+        // Add touch event listeners for panning
+        canvas.addEventListener("touchstart", function (event) {
+          isPanning = true;
           prevX = event.touches[0].clientX;
           prevY = event.touches[0].clientY;
-        }
-      });
 
-      canvas.addEventListener("touchend", function () {
-        isPanning = false;
-        boxSelected = false;
+          // Check if the touch event intersects with the box
+          var pickResult = scene.pick(
+            event.touches[0].clientX,
+            event.touches[0].clientY
+          );
+          if (pickResult.hit && pickResult.pickedMesh === box) {
+            boxSelected = true;
+          } else {
+            boxSelected = false;
+          }
+        });
+
+        canvas.addEventListener("touchmove", function (event) {
+          if (isPanning && boxSelected) {
+            var deltaX = event.touches[0].clientX - prevX;
+            var deltaY = event.touches[0].clientY - prevY;
+
+            // Update the box position based on touch movement
+            if (box) {
+              box.position.x += deltaX / 100; // Adjust the sensitivity as needed
+              box.position.z -= deltaY / 100; // Invert deltaY as Babylon.js uses left-handed coordinates for Y-axis
+            }
+
+            prevX = event.touches[0].clientX;
+            prevY = event.touches[0].clientY;
+          }
+        });
+
+        canvas.addEventListener("touchend", function () {
+          isPanning = false;
+          boxSelected = false;
+        });
+
+        createScene().then(function (createdScene) {
+          scene = createdScene;
+          sceneToRender = scene;
+          engine.runRenderLoop(function () {
+            if (sceneToRender) {
+              sceneToRender.render();
+            }
+          });
+        });
       });
 
       // Create the Babylon.js scene and the box
@@ -165,21 +183,14 @@
           });
         });
 
+        // Create the box
+        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+        box.material = new BABYLON.StandardMaterial("boxMat", scene);
+        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+        box.isVisible = false;
+
         return scene;
       };
-
-      // Start rendering the scene
-      var canvas = document.getElementById("renderCanvas");
-      var engine = new BABYLON.Engine(canvas, true);
-      createScene().then(function (createdScene) {
-        scene = createdScene;
-        sceneToRender = scene;
-        engine.runRenderLoop(function () {
-          if (sceneToRender) {
-            sceneToRender.render();
-          }
-        });
-      });
 
       // Resize the canvas when the window is resized
       window.addEventListener("resize", function () {
