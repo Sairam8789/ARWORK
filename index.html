@@ -131,14 +131,16 @@
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              marker.isVisible = false;
+              xrTest.isEnabled = false;
             }
 
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
+            //marker.isVisible = false;
 
-            xrTest.isEnabled = false;
+            //xrTest.isEnabled = false;
           });
         });
 
