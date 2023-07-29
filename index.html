@@ -112,22 +112,25 @@
       ground.material = groundMaterial;
 
       // Add click event listener to the ground
-      groundActionManager = new BABYLON.ActionManager(scene);
+       groundActionManager = new BABYLON.ActionManager(scene);
       groundActionManager.registerAction(
-        new BABYLON.ExecuteCodeAction(
-          BABYLON.ActionManager.OnPickTrigger,
-          function (evt) {
+    new BABYLON.ExecuteCodeAction(
+        BABYLON.ActionManager.OnPickTrigger,
+        function (evt) {
+            // Create the box if not already created
             if (!box) {
-              // Create the box if not already created
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.1 }, scene);
+                box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.1 }, scene);
             }
             box.isVisible = true; // Show the box when the ground is clicked
             box.position.copyFrom(evt.source.pointerInfo.pickInfo.pickedPoint);
-            ground.isVisible = false; // Hide the ground when the box is placed
-          }
-        )
-      );
-      ground.actionManager = groundActionManager;
+            
+            camera.setTarget(box.position); // <-- Added this line to set the camera target to the box
+
+            ground.isVisible = false; // Hide the ground after placing the box
+            groundActionManager.setEnabled(false); // Disable ground action manager after placing the box
+        }
+    )
+);
 
       return scene;
     };
