@@ -48,6 +48,12 @@
 <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
 <script>
     var canvas = document.getElementById("renderCanvas");
+    var engine = null;
+    var scene = null;
+    var sceneToRender = null;
+    var xrSessionInit = false; // Flag to track XR session initialization
+    var boxVisible = false; // Flag to track if the box is visible
+    var box = null;
 
     var startRenderLoop = function (engine, canvas) {
         engine.runRenderLoop(function () {
@@ -56,12 +62,6 @@
             }
         });
     }
-
-    var engine = null;
-    var scene = null;
-    var sceneToRender = null;
-    var xrSessionInit = false; // Flag to track XR session initialization
-    var box = null;
 
     var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
 
@@ -101,30 +101,23 @@
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-            xrSessionInit = true; // XR session is now initialized
-            session.addEventListener("select", function () {
-                if (!marker.isVisible) {
-                    return;
-                }
-
-                if (!box) {
-                    box = BABYLON.MeshBuilder.CreateBox('box', { size: 1 }, scene);
-                    box.material = new BABYLON.StandardMaterial('boxMat', scene);
-                    box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-                }
-
-                box.position = marker.position.clone();
-                box.rotationQuaternion = marker.rotationQuaternion.clone();
-                box.scaling = marker.scaling.clone();
-                marker.isVisible = false;
-            });
+        xr.baseExperience.sessionManager.onXRSessionInit.add(() => {
+            xrSessionInit = true;
+            marker.isVisible = true; // Show the ground marker when the AR session starts to track new surfaces
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
             if (results.length) {
+                // If the box is visible, no need to update the marker position and visibility
+                if (boxVisible) {
+                    return;
+                }
+
                 if (!box || !box.position.equals(marker.position)) {
                     marker.isVisible = true;
+                } else {
+                    // If the box exists, hide the ground marker
+                    marker.isVisible = false;
                 }
 
                 let hitTest = results[0];
@@ -153,12 +146,20 @@
         window.scene = createScene();
     };
 
-    initFunction().then(() => { scene.then(returnedScene => { sceneToRender = returnedScene; }); });
-
-    // Resize
-    window.addEventListener("resize", function () {
-        engine.resize();
+    initFunction().then(() => {
+        scene.then(returnedScene => {
+            sceneToRender = returnedScene;
+        });
     });
+
+    // Function to toggle the visibility of the box
+    function toggleBoxVisibility() {
+        if (box) {
+            boxVisible = !boxVisible;
+            box.isVisible = boxVisible;
+            marker.isVisible = !boxVisible; // Hide the ground marker when the box is visible
+        }
+    }
 </script>
 </body>
 </html>
