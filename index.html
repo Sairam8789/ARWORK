@@ -121,31 +121,32 @@
         marker.isVisible = false;
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true; // XR session is now initialized
-          session.addEventListener("select", function () {
-            if (!marker.isVisible) {
-              return;
-            }
+    xrSessionInit = true; // XR session is now initialized
+    session.addEventListener("select", function () {
+      if (!marker.isVisible) {
+        return;
+      }
 
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-              marker.isVisible = false;
-              xrTest.isEnabled = false;
-            }
+      if (!box) {
+        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+        box.material = new BABYLON.StandardMaterial("boxMat", scene);
+        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
 
-            box.position = marker.position.clone();
-            box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
-            //marker.isVisible = false;
+        // Set a fixed scaling for the box
+        box.scaling = new BABYLON.Vector3(1, 1, 1);
+      }
 
-            //xrTest.isEnabled = false;
-             marker.isVisible = false;
-             xrTest.dispose();
-          });
-        });
+      box.position = marker.position.clone();
+      box.rotationQuaternion = marker.rotationQuaternion.clone();
 
+      // Hide the marker and disable further hit tests
+      marker.isVisible = false;
+      xrTest.dispose();
+
+      // Disable camera position updates to stabilize the box
+      scene.activeCamera.trackingEnabled = false;
+    });
+  });
         //   xrTest.onHitTestResultObservable.add((results) => {
         //     if (results.length) {
         //       if (!box || !box.position.equals(marker.position)) {
