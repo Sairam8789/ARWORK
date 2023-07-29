@@ -108,20 +108,18 @@
 
         xrTest.onHitTestResultObservable.add((results) => {
             if (results.length) {
-                // If the box is visible, no need to update the marker position and visibility
                 if (boxVisible) {
                     return;
                 }
 
-                if (!box || !box.position.equals(marker.position)) {
-                    marker.isVisible = true;
-                } else {
-                    // If the box exists, hide the ground marker
-                    marker.isVisible = false;
+                if (!box) {
+                    // Create the box when clicking on the ground marker
+                    box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.2 }, scene);
+                    box.position.copyFrom(marker.position);
+                    box.isVisible = true;
                 }
 
-                let hitTest = results[0];
-                hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
+                marker.isVisible = false;
             } else {
                 marker.isVisible = true;
             }
@@ -151,15 +149,6 @@
             sceneToRender = returnedScene;
         });
     });
-
-    // Function to toggle the visibility of the box
-    function toggleBoxVisibility() {
-        if (box) {
-            boxVisible = !boxVisible;
-            box.isVisible = boxVisible;
-            marker.isVisible = !boxVisible; // Hide the ground marker when the box is visible
-        }
-    }
 </script>
 </body>
 </html>
