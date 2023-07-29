@@ -2,27 +2,9 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
-    <title>Babylon.js sample code</title>
-
+    <title>Babylon.js AR Object Placement</title>
     <!-- Babylon.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       /* CSS styles */
       html,
@@ -47,24 +29,15 @@
     </style>
   </head>
   <body>
-    <!-- The canvas element where Babylon.js will render the 3D scene -->
+    <!-- The canvas element where Babylon.js will render the AR scene -->
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
 
     <script>
-      // JavaScript code for the Babylon.js 3D scene
+      // JavaScript code for the Babylon.js AR scene
       var canvas = document.getElementById("renderCanvas");
-
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-      };
 
       var engine = null;
       var scene = null;
-      var sceneToRender = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -75,63 +48,27 @@
       };
 
       var createScene = async function () {
-        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
-        // This creates an arc rotate camera with auto-rotation (non-mesh)
-        var camera = new BABYLON.ArcRotateCamera(
-          "camera1",
-          -Math.PI / 2, // Alpha (horizontal rotation) - rotate left-right
-          Math.PI / 4, // Beta (vertical rotation) - rotate up-down
-          5, // Distance from the target (marker)
-          BABYLON.Vector3.Zero(), // Target - position where the camera rotates around
-          scene
-        );
-
-        // This attaches the camera to the canvas
-        camera.attachControl(canvas, true);
-
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
-
-        // Set up WebXR experience
+        // Set up AR experience
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
           },
-          optionalFeatures: true,
         });
-
-        // Enable WebXR hit testing
-        const fm = xr.baseExperience.featuresManager;
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        // Create a flag to indicate if a click event has occurred
-        var isClickHandled = false;
 
         // Add a click event listener to the canvas
         canvas.addEventListener("click", function (event) {
-          if (!isClickHandled && sceneToRender) {
-            const pickResult = sceneToRender.pick(
-              sceneToRender.pointerX,
-              sceneToRender.pointerY
-            );
-            if (pickResult.hit) {
-              const box = BABYLON.MeshBuilder.CreateBox("box", {
-                size: 0.2,
-              });
-              box.position.copyFrom(pickResult.pickedPoint);
+          const pickResult = scene.pick(scene.pointerX, scene.pointerY);
 
-              // Set the flag to true to avoid adding more boxes with the same click
-              isClickHandled = true;
-            }
+          if (pickResult.hit) {
+            const box = BABYLON.MeshBuilder.CreateBox("box", {
+              size: 0.2,
+            });
+            box.position.copyFrom(pickResult.pickedPoint);
+
+            // Add the box to the scene
+            box.isPickable = false; // Disable the box from being pickable to avoid blocking clicks on other objects
           }
         });
 
@@ -139,28 +76,19 @@
       };
 
       // Initialize the Babylon.js engine and scene
-      window.initFunction = async function () {
-        var asyncEngineCreation = async function () {
-          try {
-            return createDefaultEngine();
-          } catch (e) {
-            console.log(
-              "the available createEngine function failed. Creating the default engine instead"
-            );
-            return createDefaultEngine();
-          }
-        };
-
-        window.engine = await asyncEngineCreation();
-        if (!engine) throw "engine should not be null.";
-        startRenderLoop(engine, canvas);
-        window.scene = createScene().then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
+      var initFunction = async function () {
+        engine = createDefaultEngine();
+        scene = await createScene();
       };
 
       // Start the scene after initialization
-      initFunction();
+      initFunction().then(function () {
+        if (!engine) throw "engine should not be null.";
+        if (!scene) throw "scene should not be null.";
+        engine.runRenderLoop(function () {
+          scene.render();
+        });
+      });
 
       // Resize the canvas when the window size changes
       window.addEventListener("resize", function () {
