@@ -67,8 +67,11 @@
             });
             box.position.copyFrom(pickResult.pickedPoint);
 
-            // Add the box to the scene
-            box.isPickable = false; // Disable the box from being pickable to avoid blocking clicks on other objects
+            // Add the box to the AR scene (user environment)
+            xr.baseExperience.camera.addChild(box);
+
+            // Reset the box position to (0,0,0) relative to the camera
+            box.position.copyFromFloats(0, 0, 0);
           }
         });
 
