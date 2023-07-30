@@ -64,6 +64,7 @@
       var xrSessionInit = false;
       var box = null;
       var boxPlaced = false; // Add boxPlaced flag
+      var xrTest = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -72,7 +73,7 @@
           disableWebGL2Support: false,
         });
       };
-var xrTest = null;
+
       var createScene = async function () {
         // previous scene creation code...
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
