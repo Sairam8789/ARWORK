@@ -61,8 +61,9 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var xrSessionInit = false; // Flag to track XR session initialization
+      var xrSessionInit = false;
       var box = null;
+      var boxPlaced = false; // Add boxPlaced flag
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -71,89 +72,38 @@
           disableWebGL2Support: false,
         });
       };
-
+var xrTest = null;
       var createScene = async function () {
-        // This creates a basic Babylon Scene object (non-mesh)
-        var scene = new BABYLON.Scene(engine);
-
-        // This creates and positions a free camera (non-mesh)
-        var camera = new BABYLON.FreeCamera(
-          "camera1",
-          new BABYLON.Vector3(0, 5, -10),
-          scene
-        );
-
-        // This targets the camera to scene origin
-        camera.setTarget(BABYLON.Vector3.Zero());
-
-        // This attaches the camera to the canvas
-        camera.attachControl(canvas, true);
-
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
-
-        var xr = await scene.createDefaultXRExperienceAsync({
-          uiOptions: {
-            sessionMode: "immersive-ar",
-          },
-          optionalFeatures: true,
-        });
-
-        const fm = xr.baseExperience.featuresManager;
-
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        const marker = BABYLON.MeshBuilder.CreateGround(
-          "marker",
-          { width: 1, height: 1 },
-          scene
-        );
-        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-        marker.material.alpha = 0.5;
-        marker.isVisible = false;
-
-              var boxPlaced = false; // add this line at the beginning of your script
-
+        // previous scene creation code...
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true; // XR session is now initialized
+          xrSessionInit = true;
           session.addEventListener("select", function () {
-            if (!marker.isVisible || boxPlaced) { // use boxPlaced instead of xrTest.isEnabled
+            if (!marker.isVisible || boxPlaced) {
               return;
             }
-
             if (!box) {
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
             }
-
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
-
-            boxPlaced = true; // set boxPlaced to true when a box is placed
+            boxPlaced = true;
+           xrTest.disable();
+            
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
-          if (boxPlaced) { // use boxPlaced instead of xrTest.isEnabled
+          if (boxPlaced) {
             return;
           }
-
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
             }
-
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
               marker.scaling,
@@ -164,8 +114,6 @@
             marker.isVisible = false;
           }
         });
-
-
 
         return scene;
       };
@@ -181,7 +129,6 @@
             return createDefaultEngine();
           }
         };
-
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
         startRenderLoop(engine, canvas);
@@ -194,7 +141,6 @@
         });
       });
 
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
