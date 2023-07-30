@@ -120,10 +120,10 @@
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+                xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!marker.isVisible) {
+            if (!marker.isVisible || xrTest.isEnabled === false) { // add the xrTest.isEnabled check here
               return;
             }
 
@@ -138,11 +138,15 @@
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
 
-            xrTest.isEnabled = false;
+            xrTest.isEnabled = false; // disable hit testing here
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
+          if (!xrTest.isEnabled) { // add the xrTest.isEnabled check here
+            return;
+          }
+
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
@@ -158,6 +162,7 @@
             marker.isVisible = false;
           }
         });
+
 
         return scene;
       };
