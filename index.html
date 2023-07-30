@@ -120,10 +120,12 @@
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
-                xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+              var boxPlaced = false; // add this line at the beginning of your script
+
+        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!marker.isVisible || xrTest.isEnabled === false) { // add the xrTest.isEnabled check here
+            if (!marker.isVisible || boxPlaced) { // use boxPlaced instead of xrTest.isEnabled
               return;
             }
 
@@ -138,12 +140,12 @@
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
 
-            xrTest.isEnabled = false; // disable hit testing here
+            boxPlaced = true; // set boxPlaced to true when a box is placed
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
-          if (!xrTest.isEnabled) { // add the xrTest.isEnabled check here
+          if (boxPlaced) { // use boxPlaced instead of xrTest.isEnabled
             return;
           }
 
@@ -162,6 +164,7 @@
             marker.isVisible = false;
           }
         });
+
 
 
         return scene;
