@@ -127,15 +127,15 @@
               return;
             }
 
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+            if (!box&&!boxPlaced) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.5 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
             }
 
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
+           // box.scaling = marker.scaling.clone();
            boxplaced= true;
 
             if (boxPlaced) {
