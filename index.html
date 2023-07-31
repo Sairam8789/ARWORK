@@ -65,12 +65,14 @@
       };
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera(
+        var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          new BABYLON.Vector3(0, 5, -10),
+          0,
+          Math.PI / 3,
+          10,
+          BABYLON.Vector3.Zero(),
           scene
         );
-        camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
         var light = new BABYLON.HemisphericLight(
           "light",
@@ -95,8 +97,6 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
-        let boxPlaced = false;  // flag to check if box is placed
-
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           session.addEventListener("select", function () {
             if (!marker.isVisible) {
@@ -109,11 +109,9 @@
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
-            //box.scaling = marker.scaling.clone();
+            box.scaling = marker.scaling.clone();
             marker.isVisible = false;
             hitTestSubscription.dispose(); // unsubscribe from the hit test results
-            boxPlaced = true;  // flag to check if box is placed
-
           });
         });
         hitTestSubscription = xrTest.onHitTestResultObservable.add((results) => {
