@@ -63,6 +63,7 @@
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
+      var anchor = null; // To store the box's anchor
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -73,24 +74,30 @@
       };
 
       var createScene = async function () {
+        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
+        // This creates and positions a free camera (non-mesh)
         var camera = new BABYLON.FreeCamera(
           "camera1",
           new BABYLON.Vector3(0, 5, -10),
           scene
         );
 
+        // This targets the camera to scene origin
         camera.setTarget(BABYLON.Vector3.Zero());
 
+        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
 
+        // Default intensity is 1. Let's dim the light a small amount
         light.intensity = 0.7;
 
         var xr = await scene.createDefaultXRExperienceAsync({
@@ -103,7 +110,9 @@
         const fm = xr.baseExperience.featuresManager;
 
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-        const anchors = fm.enableFeature(BABYLON.WebXRAnchorSystem.Name, 'latest'); 
+
+        // Enable XR Anchor System
+        const xrAnchorSystem = fm.enableFeature(BABYLON.WebXRAnchorSystem.Name, 'latest');
 
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
@@ -116,50 +125,49 @@
         marker.isVisible = false;
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true;
+          xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!xrTest.isEnabled) return;
-            xrTest.isEnabled = false;
-            if (box) box.dispose();
-            if (anchors) {
-              anchors.addAnchorPointUsingHitTestResultAsync(hitTest.latestHitTestResult);
+            if (!marker.isVisible) {
+              return;
             }
+
+            if (!box) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            }
+
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.scaling = marker.scaling.clone();
+
+            // Adding an anchor to the box
+            if (anchor) {  // If there is an anchor already, remove it
+                xrAnchorSystem.removeAnchor(anchor);
+            }
+            anchor = xrAnchorSystem.addAnchor(box);
+
+            marker.isVisible = false;
+            xrTest.isEnabled = false;
           });
         });
 
-        box = BABYLON.MeshBuilder.CreateBox("box", {}, scene);
-        box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
-        box.isVisible = false;
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (results.length) {
+            if (!box || !box.position.equals(marker.position)) {
+              marker.isVisible = true;
+            }
 
-      xrTest.onHitTestResultObservable.add((results) => {
-  if (results.length) {
-    marker.isVisible = true;
-
-    let hitTest = results[0];
-    hitTest.transformationMatrix.decompose(
-      marker.scaling,
-      marker.rotationQuaternion,
-      marker.position
-    );
-  } else {
-    marker.isVisible = false;
-  }
-});
-        if (anchors) {
-            console.log('anchors attached');
-            anchors.onAnchorAddedObservable.add(anchor => {
-                console.log('attaching', anchor);
-                anchor.attachedNode = box; 
-            })
-
-            anchors.onAnchorRemovedObservable.add(anchor => {
-                console.log('disposing', anchor);
-                if (anchor) {
-                    anchor.attachedNode.dispose(); 
-                    box = null;
-                }
-            });
-        }
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
 
         return scene;
       };
@@ -178,23 +186,14 @@
 
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
-
+        startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
 
-      window.addEventListener("DOMContentLoaded", function () {
-        initFunction().then(function () {
-          engine.hideLoadingUI();
-          sceneToRender = scene;
-          startRenderLoop(engine, canvas);
+      initFunction().then(() => {
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
         });
-      });
-
-      // Resize
-      window.addEventListener("resize", function () {
-        if (engine) {
-          engine.resize();
-        }
       });
     </script>
   </body>
