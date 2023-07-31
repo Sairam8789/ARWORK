@@ -131,17 +131,20 @@
         box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
         box.isVisible = false;
 
-        xrTest.onHitTestResultObservable.add((hitTest) => {
-          marker.isVisible = hitTest.length > 0;
-          if (hitTest.length > 0) {
-            marker.position.copyFrom(hitTest[0].position);
-            if (!box.isVisible && xrSessionInit) {
-              box.isVisible = true;
-              box.position.copyFrom(hitTest[0].position);
-            }
-          }
-        });
+      xrTest.onHitTestResultObservable.add((results) => {
+  if (results.length) {
+    marker.isVisible = true;
 
+    let hitTest = results[0];
+    hitTest.transformationMatrix.decompose(
+      marker.scaling,
+      marker.rotationQuaternion,
+      marker.position
+    );
+  } else {
+    marker.isVisible = false;
+  }
+});
         if (anchors) {
             console.log('anchors attached');
             anchors.onAnchorAddedObservable.add(anchor => {
