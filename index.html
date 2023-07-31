@@ -1,121 +1,129 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Babylon.js AR sample code</title>
-    <!-- Babylon.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Babylon.js AR sample code with ArcRotateCamera and WebXR Anchor</title>
+
+    <!-- Include the Babylon.js libraries -->
+    <!-- Please note that we're using the production version (minified and obfuscated) in this playground. -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+
     <style>
-      html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; }
-      #renderCanvas { width: 100%; height: 100%; touch-action: none; }
-      #canvasZone { width: 100%; height: 100%; }
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #renderCanvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
     </style>
   </head>
   <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <canvas id="renderCanvas"></canvas>
+
     <script>
       var canvas = document.getElementById("renderCanvas");
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
+      var engine = null;
+      var sceneToRender = null;
+
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
         });
       };
-      var engine = null;
-      var scene = null;
-      var sceneToRender = null;
-      var xrSessionInit = false;
-      var box = null;
-      var isBoxPlaced = false; // New flag
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false, });
-      };
+
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
-        camera.setTarget(BABYLON.Vector3.Zero());
+
+        var camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 2, BABYLON.Vector3.Zero(), scene);
         camera.attachControl(canvas, true);
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+        var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
-        var xr = await scene.createDefaultXRExperienceAsync({ uiOptions: { sessionMode: "immersive-ar", }, optionalFeatures: true, });
-        const fm = xr.baseExperience.featuresManager;
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-        const marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
-        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-        marker.material.alpha = 0.5;
+
+        var xr = await scene.createDefaultXRExperienceAsync({
+          optionalFeatures: true,
+        });
+
+        const marker = BABYLON.MeshBuilder.CreateBox("marker", {}, scene);
         marker.isVisible = false;
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          session.addEventListener("select", function () {
-            if (!marker.isVisible) {
-              return;
-            }
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            }
-            box.position = marker.position.clone();
-            box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
-            isBoxPlaced = true; // Box is placed
-          });
-        });
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (isBoxPlaced) { // If box is placed, stop processing hit test results
-            return;
-          }
-          if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
+
+        const xrTest = xr.baseExperience.featuresManager.enableFeature(BABYLON.WebXRHitTest, "latest");
+
+        xr.baseExperience.sessionManager.onXRFrameObservable.add((xrFrame) => {
+          let hitTestResults = xrFrame.getHitTestResults(xrTest.xrHitTestSource);
+
+          if (hitTestResults.length) {
+            let result = hitTestResults[0];
+            let pose = result.getPose(xr.baseExperience.sessionManager.referenceSpace);
+
+            if (pose) {
+              marker.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
               marker.isVisible = true;
+
+              // Create anchor when box is visible and place is selected
+              if (xr.baseExperience.input.onInputSourcesChangedObservable.hasObservers()) {
+                xrFrame.createAnchor(pose.transform, xr.baseExperience.sessionManager.referenceSpace).then((anchor) => {
+                  xrTest.xrHitTestSource.cancel();
+                  xrTest.detach();
+
+                  // Update the position of your object using the anchor's transform
+                  // You may need to adjust this depending on the specifics of your project
+                  marker.position.set(anchor.transform.position.x, anchor.transform.position.y, anchor.transform.position.z);
+                });
+
+                xr.baseExperience.input.onInputSourcesChangedObservable.clear();
+              }
             }
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
           }
         });
+
+        xr.baseExperience.input.onInputSourcesChangedObservable.add(() => {
+          marker.isVisible = !marker.isVisible;
+        });
+
         return scene;
       };
+
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
             return createDefaultEngine();
           }
         };
+
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
-        startRenderLoop(engine, canvas);
-        window.scene = createScene();
+        sceneToRender = createScene();
       };
+
       initFunction().then(() => {
-        scene.then((returnedScene) => { sceneToRender = returnedScene; });
+        engine.runRenderLoop(function () {
+          if (sceneToRender) {
+            sceneToRender.render();
+          }
+        });
       });
-      window.addEventListener("resize", function () { engine.resize(); });
+
+      // Resize
+      window.addEventListener("resize", function () {
+        engine.resize();
+      });
     </script>
   </body>
 </html>
