@@ -95,6 +95,8 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
+        let boxPlaced = false;  // flag to check if box is placed
+
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           session.addEventListener("select", function () {
             if (!marker.isVisible) {
@@ -107,9 +109,11 @@
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
+            //box.scaling = marker.scaling.clone();
             marker.isVisible = false;
             hitTestSubscription.dispose(); // unsubscribe from the hit test results
+            boxPlaced = true;  // flag to check if box is placed
+
           });
         });
         hitTestSubscription = xrTest.onHitTestResultObservable.add((results) => {
