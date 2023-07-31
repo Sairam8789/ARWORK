@@ -148,11 +148,15 @@
             anchor = xrAnchorSystem.addAnchor(box);
 
             marker.isVisible = false;
-            xrTest.isEnabled = false;
+            xrTest.isEnabled = false; // Disable hit testing after placing the object
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
+          if (!xrTest.isEnabled) { // If hit testing is disabled, don't update the marker
+              return;
+          }
+
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
@@ -186,13 +190,17 @@
 
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
-        startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
-
-      initFunction().then(() => {
+      window.initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
+
+          engine.runRenderLoop(function () {
+            if (sceneToRender && sceneToRender.activeCamera) {
+              sceneToRender.render();
+            }
+          });
         });
       });
     </script>
