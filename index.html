@@ -101,40 +101,47 @@ const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest", {
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          session.addEventListener("select", function () {
-            if (!marker.isVisible) {
-              return;
-            }
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.5 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            }
-            box.position = marker.position.clone();
-            box.rotationQuaternion = marker.rotationQuaternion.clone();
-            //box.scaling = marker.scaling.clone();
-            box.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5); // Replace 0.5 with the desired scale factor
+       var boxPlaced = false; // Flag to track if the box has been placed
 
-            marker.isVisible = false;
-            hitTestSubscription.dispose(); // unsubscribe from the hit test results
-          });
-        });
-        hitTestSubscription = xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
-              marker.isVisible = true;
-            }
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
-          }
-        });
+  xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+    xrSessionInit = true; // XR session is now initialized
+    session.addEventListener("select", function () {
+      if (!marker.isVisible || boxPlaced) {
+        return;
+      }
+
+      if (!box) {
+        box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+        box.material = new BABYLON.StandardMaterial("boxMat", scene);
+        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+        boxPlaced = true; // Set the flag to true after creating the box
+      }
+
+      box.position = marker.position.clone();
+      box.rotationQuaternion = marker.rotationQuaternion.clone();
+      box.scaling = marker.scaling.clone();
+      marker.isVisible = false;
+    });
+  });
+
+  xrTest.onHitTestResultObservable.add((results) => {
+    if (results.length && !boxPlaced) { // Check if the box has not been placed yet
+      if (!box || !box.position.equals(marker.position)) {
+        marker.isVisible = true;
+      }
+
+      let hitTest = results[0];
+      hitTest.transformationMatrix.decompose(
+        marker.scaling,
+        marker.rotationQuaternion,
+        marker.position
+      );
+    } else {
+      marker.isVisible = false;
+    }
+  });
+
+
         return scene;
       };
       window.initFunction = async function () {
