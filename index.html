@@ -125,23 +125,22 @@ const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
   });
 
   xrTest.onHitTestResultObservable.add((results) => {
-    if (results.length && !boxPlaced) { // Check if the box has not been placed yet
-      if (!box || !box.position.equals(marker.position)) {
-        marker.isVisible = true;
+    if (results.length) {
+      if (boxPlaced) {
+        marker.isVisible = false; // Hide the marker if the box is already placed
+      } else {
+        marker.isVisible = true; // Show the marker if the box is not placed yet
+        let hitTest = results[0];
+        hitTest.transformationMatrix.decompose(
+          marker.scaling,
+          marker.rotationQuaternion,
+          marker.position
+        );
       }
-
-      let hitTest = results[0];
-      hitTest.transformationMatrix.decompose(
-        marker.scaling,
-        marker.rotationQuaternion,
-        marker.position
-      );
     } else {
       marker.isVisible = false;
     }
   });
-
-
         return scene;
       };
       window.initFunction = async function () {
