@@ -87,7 +87,7 @@
           optionalFeatures: true,
         });
         const fm = xr.baseExperience.featuresManager;
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest",disablePermanentHitTest:true,);
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
           { width: 1, height: 1 },
