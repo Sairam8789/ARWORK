@@ -2,9 +2,7 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
     <title>Babylon.js AR sample code</title>
-
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
@@ -22,7 +20,6 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       html,
       body {
@@ -32,13 +29,11 @@
         margin: 0;
         padding: 0;
       }
-
       #renderCanvas {
         width: 100%;
         height: 100%;
         touch-action: none;
       }
-
       #canvasZone {
         width: 100%;
         height: 100%;
@@ -49,7 +44,6 @@
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
       var canvas = document.getElementById("renderCanvas");
-
       var startRenderLoop = function (engine, canvas) {
         engine.runRenderLoop(function () {
           if (sceneToRender && sceneToRender.activeCamera) {
@@ -57,14 +51,11 @@
           }
         });
       };
-
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
-      var boxPlaced = false; // Flag to track if box is placed
-
+      var hitTestSubscription = null;
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -72,36 +63,29 @@
           disableWebGL2Support: false,
         });
       };
-
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-
         var camera = new BABYLON.FreeCamera(
           "camera1",
           new BABYLON.Vector3(0, 5, -10),
           scene
         );
-
         camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
-
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
         light.intensity = 0.7;
-
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
           },
           optionalFeatures: true,
         });
-
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
           { width: 1, height: 1 },
@@ -111,37 +95,28 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
-
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true;
           session.addEventListener("select", function () {
             if (!marker.isVisible) {
               return;
             }
-
             if (!box) {
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
             }
-
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
-
-            boxPlaced = true; // Set the flag to true once box is placed
+            hitTestSubscription.dispose(); // unsubscribe from the hit test results
           });
         });
-
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (boxPlaced) return; // If box is placed, don't do anything
-
+        hitTestSubscription = xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
             }
-
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
               marker.scaling,
@@ -152,10 +127,8 @@
             marker.isVisible = false;
           }
         });
-
         return scene;
       };
-
       window.initFunction = async function () {
         var asyncEngineCreation = async function () {
           try {
@@ -167,20 +140,16 @@
             return createDefaultEngine();
           }
         };
-
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
-
       initFunction().then(() => {
         scene.then((returnedScene) => {
           sceneToRender = returnedScene;
         });
       });
-
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
