@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <title>Babylon.js sample code</title>
+    <title>Babylon.js AR sample code</title>
 
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
@@ -56,12 +56,21 @@
             sceneToRender.render();
           }
         });
-      }
+      };
 
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
+      var selectedMesh = null; // Variable to keep track of the selected mesh (the box)
+
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
+
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
 
@@ -86,8 +95,24 @@
           scene
         );
 
+        var ground = BABYLON.MeshBuilder.CreateGround(
+          "ground",
+          { width: 10, height: 10 },
+          scene,
+          false
+        );
+        ground.isVisible = false;
+
+        var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
+          "UI"
+        );
+
         //marker
-        const marker = BABYLON.MeshBuilder.CreateTorus('marker', { diameter: 0.15, thickness: 0.05 });
+        const marker = BABYLON.MeshBuilder.CreateTorus(
+          "marker",
+          { diameter: 0.15, thickness: 0.05 },
+          scene
+        );
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
@@ -101,58 +126,26 @@
 
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-        const anchors = fm.enableFeature(BABYLON.WebXRAnchorSystem, 'latest');
-        const xrBackgroundRemover = fm.enableFeature(BABYLON.WebXRBackgroundRemover.Name);
-
-        //hitTest
-
-        let hitTest;
+        const xrBackgroundRemover = fm.enableFeature(
+          BABYLON.WebXRBackgroundRemover.Name
+        );
 
         xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            hitTest = results[0];
-            marker.isVisible = true;
-            hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
-          } else {
-            hitTest = undefined;
+          if (results.length && !selectedMesh) {
+            // If hit test results are available and no mesh is selected, create the box
+            const hitTest = results[0];
+            var box = BABYLON.MeshBuilder.CreateBox(
+              "box",
+              { width: 0.2, height: 0.2, depth: 0.2 },
+              scene
+            );
+            box.position.copyFrom(hitTest.getPose().transform.position);
+            selectedMesh = box; // Assign the box to selectedMesh variable
+
+            // Hide the torus marker
             marker.isVisible = false;
           }
         });
-
-        // Drag and drop functionality
-        var selectedMesh = null;
-
-        var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
-        pointerDragBehavior.moveAttached = false;
-        pointerDragBehavior.useObjectOrientationForDragging = false;
-
-        pointerDragBehavior.onDragStartObservable.add(() => {
-          if (selectedMesh) {
-            // Store the initial position before dragging starts
-            selectedMesh.initialPosition = selectedMesh.position.clone();
-          }
-        });
-
-        pointerDragBehavior.onDragObservable.add((event) => {
-          if (selectedMesh) {
-            // Update the position of the selected mesh while dragging
-            selectedMesh.position.x = selectedMesh.initialPosition.x + event.delta.x;
-            selectedMesh.position.z = selectedMesh.initialPosition.z + event.delta.z;
-          }
-        });
-
-        pointerDragBehavior.onDragEndObservable.add(() => {
-          selectedMesh = null;
-        });
-
-        scene.onPointerDown = (event, pickInfo) => {
-          if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh === marker && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
-            // If the picked mesh is the torus marker, create the box
-            var box = BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
-            box.position.copyFrom(pickInfo.pickedPoint);
-            selectedMesh = box;
-          }
-        };
 
         return scene;
       };
@@ -162,19 +155,28 @@
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
             return createDefaultEngine();
           }
-        }
+        };
 
         window.engine = await asyncEngineCreation();
-        if (!engine) throw 'engine should not be null.';
+        if (!engine) throw "engine should not be null.";
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
 
       initFunction().then(() => {
-        scene.then(returnedScene => { sceneToRender = returnedScene; });
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
+      });
+
+      // Reset the selected mesh when the user exits XR mode
+      xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
+        selectedMesh = null;
       });
 
       // Resize
