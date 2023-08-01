@@ -191,26 +191,41 @@
         engine.resize();
       });
 
-      let initialDist = 0;
+      let initialPointerDistance = null;
+let initialScale = null;
 
-      canvas.addEventListener('touchstart', function (event) {
-          if (event.touches.length > 1) {  // Check if there are two fingers
-              let dx = event.touches[0].clientX - event.touches[1].clientX;
-              let dy = event.touches[0].clientY - event.touches[1].clientY;
-              initialDist = Math.sqrt(dx * dx + dy * dy);
-          }
-      });
+canvas.addEventListener('pointerdown', (event) => {
+    if (initialPointerDistance !== null) { // Another pointer is already down
+        // Calculate distance between pointers
+        const dx = event.clientX - initialPointerX;
+        const dy = event.clientY - initialPointerY;
+        initialPointerDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        initialScale = box.scaling.x; // assuming uniform scaling
+    }
+    // Store the initial pointer position
+    initialPointerX = event.clientX;
+    initialPointerY = event.clientY;
+});
 
-      canvas.addEventListener('touchmove', function (event) {
-          if (event.touches.length > 1 && box) {  // Check if there are two fingers
-              let dx = event.touches[0].clientX - event.touches[1].clientX;
-              let dy = event.touches[0].clientY - event.touches[1].clientY;
-              let dist = Math.sqrt(dx * dx + dy * dy);
-              
-              let scale = dist / initialDist;
-              box.scaling = new BABYLON.Vector3(scale, scale, scale);
-          }
-      });
+canvas.addEventListener('pointermove', (event) => {
+    if (initialPointerDistance !== null) {
+        const dx = event.clientX - initialPointerX;
+        const dy = event.clientY - initialPointerY;
+        const pointerDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        const scaleFactor = pointerDistance / initialPointerDistance;
+        box.scaling.x = initialScale * scaleFactor;
+        box.scaling.y = initialScale * scaleFactor;
+        box.scaling.z = initialScale * scaleFactor;
+    }
+});
+
+canvas.addEventListener('pointerup', (event) => {
+    initialPointerDistance = null;
+    initialScale = null;
+});
+
     </script>
   </body>
 </html>
