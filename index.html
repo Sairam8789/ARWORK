@@ -150,8 +150,7 @@
             // If the picked mesh is the torus marker, create the box
             var box = BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
             box.position.copyFrom(pickInfo.pickedPoint);
-            box.rotationQuaternion = new BABYLON.Quaternion();
-            attachOwnPointerDragBehavior(box);
+            selectedMesh = box;
           }
         };
 
