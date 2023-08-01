@@ -79,11 +79,10 @@
         var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
 
-        box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-        box.material = new BABYLON.StandardMaterial("boxMat", scene);
-        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-        box.position = new BABYLON.Vector3(0, 1, 0);
-        attachOwnPointerDragBehavior(box); // Attach the drag behavior
+       var initialBox = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+        initialBox.position = new BABYLON.Vector3(0, 1, 0); // Change position as needed
+        initialBox.material = new BABYLON.StandardMaterial("boxMat", scene);
+        initialBox.material.diffuseColor = new BABYLON.Color3(0, 0, 1); // Different color for the initial box
 
         var xr = await scene.createDefaultXRExperienceAsync({
             uiOptions: {
@@ -121,6 +120,12 @@
                 xrTest.isEnabled = false;
                 attachOwnPointerDragBehavior(box); // Attach the drag behavior
             });
+        });
+         xr.baseExperience.onStateChangedObservable.add((state) => {
+          if (state === BABYLON.WebXRState.NOT_IN_XR) {
+            if (box) box.isVisible = false;
+            marker.isVisible = false;
+          }
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
