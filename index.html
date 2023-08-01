@@ -95,9 +95,6 @@
           scene
         );
 
-        var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene, false);
-        ground.isVisible = true;
-
         var model = new BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
         model.rotationQuaternion = new BABYLON.Quaternion();
         model.position.y += 0.1;
@@ -136,15 +133,6 @@
             marker.isVisible = false;
           }
         });
-
-        //Anchors
-        scene.onPointerDown = (event, pickInfo) => {
-          if (pickInfo.hit && pickInfo.pickedMesh && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
-            anchors.addAnchorPointUsingHitTestResultAsync(hitTest).then(() => {
-              model.isVisible = false; // Hide the temporary box after anchoring
-            });
-          }
-        };
 
         // Drag and drop functionality
         var selectedMesh = null;
