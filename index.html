@@ -104,12 +104,14 @@
           },
           optionalFeatures: true,
         });
-xr.baseExperience.onExitingVRObservable.add(() => {
-          if (box) {
-            box.isVisible = false;
-            ground.isVisible=false;
-          }
-        });
+xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
+  if (box) {
+    box.dispose(); // Removes the box from the scene
+  }
+  if (marker) {
+    marker.dispose(); // Removes the ground from the scene
+  }
+});
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
