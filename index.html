@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
     <title>Babylon.js AR sample code</title>
+
     <!-- Babylon.js -->
+    <!-- (include all required Babylon.js libraries here) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
     <script src="https://cdn.babylonjs.com/recast.js"></script>
@@ -20,154 +23,191 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
     <style>
-        html,
-        body {
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        #renderCanvas {
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-        }
-        #canvasZone {
-            width: 100%;
-            height: 100%;
-        }
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #renderCanvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+
+      #canvasZone {
+        width: 100%;
+        height: 100%;
+      }
     </style>
-</head>
-<body>
-<div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-<script>
-    var canvas = document.getElementById("renderCanvas");
-    var engine = null;
-    var scene = null;
-    var sceneToRender = null;
-    var xrSessionInit = false;
-    var box = null;
-    var marker = null;
+  </head>
+  <body>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <script>
+      var canvas = document.getElementById("renderCanvas");
 
-    var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-            preserveDrawingBuffer: true,
-            stencil: true,
-            disableWebGL2Support: false,
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
         });
-    };
+      };
 
-    function attachOwnPointerDragBehavior(mesh) {
-        var pointerDragBehavior = new BABYLON.PointerDragBehavior({dragPlaneNormal: new BABYLON.Vector3(0, 1, 0)});
+      var engine = null;
+      var scene = null;
+      var sceneToRender = null;
+      var xrSessionInit = false; // Flag to track XR session initialization
+      var box = null;
+
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
+
+      function attachOwnPointerDragBehavior(mesh) {
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+          dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+        });
         pointerDragBehavior.moveAttached = false;
-        pointerDragBehavior.useObjectOrientationForDragging = false;
+        pointerDragBehavior.useObjectOrienationForDragging = false;
+        pointerDragBehavior.onDragStartObservable.add((event) => {
+          console.log("startDrag");
+        });
         pointerDragBehavior.onDragObservable.add((event) => {
-            pointerDragBehavior.attachedNode.position.x += event.delta.x;
-            pointerDragBehavior.attachedNode.position.z += event.delta.z;
+          console.log("drag");
+          pointerDragBehavior.attachedNode.position.x += event.delta.x;
+          pointerDragBehavior.attachedNode.position.z += event.delta.z;
+        });
+        pointerDragBehavior.onDragEndObservable.add((event) => {
+          console.log("endDrag");
         });
         mesh.addBehavior(pointerDragBehavior);
-    }
+      }
 
-    var createScene = async function () {
+      var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+        var camera = new BABYLON.FreeCamera(
+          "camera1",
+          new BABYLON.Vector3(0, 5, -10),
+          scene
+        );
         camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
-
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
         light.intensity = 0.7;
 
-       var initialBox = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-        initialBox.position = new BABYLON.Vector3(0, 1, 0); // Change position as needed
-        initialBox.material = new BABYLON.StandardMaterial("boxMat", scene);
-        initialBox.material.diffuseColor = new BABYLON.Color3(0, 0, 1); // Different color for the initial box
-
         var xr = await scene.createDefaultXRExperienceAsync({
-            uiOptions: {
-                sessionMode: "immersive-ar",
-            },
-            optionalFeatures: true,
+          uiOptions: {
+            sessionMode: "immersive-ar",
+          },
+          optionalFeatures: true,
         });
+          xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
+  if (box) {
+    box.isVisible = false; // Hide the box
+  }
+  if (marker) {
+    marker.isVisible = false; // Hide the marker (ground)
+  }
+});
 
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
+        const marker = BABYLON.MeshBuilder.CreateGround(
+          "marker",
+          { width: 1, height: 1 },
+          scene
+        );
         marker.material = new BABYLON.StandardMaterial("markerMat", scene);
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-            xrSessionInit = true;
-            box.isVisible = false;
-            session.addEventListener("select", function () {
-                if (!marker.isVisible) {
-                    return;
-                }
-                if (!box) {
-                    box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-                    box.material = new BABYLON.StandardMaterial("boxMat", scene);
-                    box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-                }
-                box.position = marker.position.clone();
-                box.rotationQuaternion = marker.rotationQuaternion.clone();
-                box.scaling = marker.scaling.clone();
-                box.isVisible = true;
-                marker.isVisible = false;
-                xrTest.isEnabled = false;
-                attachOwnPointerDragBehavior(box); // Attach the drag behavior
-            });
+          xrSessionInit = true; // XR session is now initialized
+          session.addEventListener("select", function () {
+            if (!marker.isVisible) {
+              return;
+            }
+
+            if (!box) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              attachOwnPointerDragBehavior(box);
+            }
+
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.scaling = marker.scaling.clone();
+            marker.isVisible = false;
+
+            xrTest.isEnabled = false;
+          });
         });
-       xr.baseExperience.onStateChangedObservable.add((state) => {
-  if (state === BABYLON.WebXRState.NOT_IN_XR) {
-    if (box) box.isVisible = false;
-    if (marker) marker.isVisible = false;
-  }
-});
-
-
 
         xrTest.onHitTestResultObservable.add((results) => {
-            if (results.length) {
-                if (!box || !box.position.equals(marker.position)) {
-                    marker.isVisible = true;
-                }
-                let hitTest = results[0];
-                hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
-            } else {
-                marker.isVisible = false;
+          if (results.length) {
+            if (!box || !box.position.equals(marker.position)) {
+              marker.isVisible = true;
             }
+
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
         });
 
         return scene;
-    };
+      };
 
-    var engine;
-    try {
-        engine = createDefaultEngine();
-    } catch (e) {
-        console.log("the available createEngine function failed. Creating the default engine instead");
-        engine = createDefaultEngine();
-    }
-    if (!engine) throw 'engine should not be null.';
+      window.initFunction = async function () {
+        var asyncEngineCreation = async function () {
+          try {
+            return createDefaultEngine();
+          } catch (e) {
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
+            return createDefaultEngine();
+          }
+        };
 
-    scene = createScene();
-    scene.then((returnedScene) => {
-        sceneToRender = returnedScene;
-    });
+        window.engine = await asyncEngineCreation();
+        if (!engine) throw "engine should not be null.";
+        startRenderLoop(engine, canvas);
+        window.scene = createScene();
+      };
 
-    engine.runRenderLoop(function () {
-        if (sceneToRender) {
-            sceneToRender.render();
-        }
-    });
+      initFunction().then(() => {
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
+      });
 
-    window.addEventListener("resize", function () {
+      // Resize
+      window.addEventListener("resize", function () {
         engine.resize();
-    });
-</script>
-</body>
+      });
+    </script>
+  </body>
 </html>
