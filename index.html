@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <title>Babylon.js AR Sample Code with Drag and Drop</title>
+    <title>Babylon.js sample code</title>
 
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
@@ -56,21 +56,12 @@
             sceneToRender.render();
           }
         });
-      };
+      }
 
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var xrSessionInit = false; // Flag to track XR session initialization
-
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
-
+      var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
 
@@ -95,11 +86,6 @@
           scene
         );
 
-        var model = new BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
-        model.rotationQuaternion = new BABYLON.Quaternion();
-        model.position.y += 0.1;
-        model.isVisible = false;
-
         //marker
         const marker = BABYLON.MeshBuilder.CreateTorus('marker', { diameter: 0.15, thickness: 0.05 });
         marker.isVisible = false;
@@ -116,23 +102,17 @@
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
         const anchors = fm.enableFeature(BABYLON.WebXRAnchorSystem, 'latest');
+        const xrBackgroundRemover = fm.enableFeature(BABYLON.WebXRBackgroundRemover.Name);
 
         //hitTest
+
         let hitTest;
-        let boxAdded = false;
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             hitTest = results[0];
             marker.isVisible = true;
             hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
-
-            // Add the box only once after the first hit test
-            if (!boxAdded) {
-              model.isVisible = true;
-              hitTest.transformationMatrix.decompose(model.scaling, model.rotationQuaternion, model.position);
-              boxAdded = true;
-            }
           } else {
             hitTest = undefined;
             marker.isVisible = false;
@@ -166,9 +146,12 @@
         });
 
         scene.onPointerDown = (event, pickInfo) => {
-          if (pickInfo.hit && pickInfo.pickedMesh && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
-            selectedMesh = pickInfo.pickedMesh;
-            pointerDragBehavior.attach(selectedMesh);
+          if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh === marker && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
+            // If the picked mesh is the torus marker, create the box
+            var box = BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
+            box.position.copyFrom(pickInfo.pickedPoint);
+            box.rotationQuaternion = new BABYLON.Quaternion();
+            attachOwnPointerDragBehavior(box);
           }
         };
 
@@ -180,23 +163,19 @@
           try {
             return createDefaultEngine();
           } catch (e) {
-            console.log(
-              "the available createEngine function failed. Creating the default engine instead"
-            );
+            console.log("the available createEngine function failed. Creating the default engine instead");
             return createDefaultEngine();
           }
-        };
+        }
 
         window.engine = await asyncEngineCreation();
-        if (!engine) throw "engine should not be null.";
+        if (!engine) throw 'engine should not be null.';
         startRenderLoop(engine, canvas);
         window.scene = createScene();
       };
 
       initFunction().then(() => {
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
+        scene.then(returnedScene => { sceneToRender = returnedScene; });
       });
 
       // Resize
