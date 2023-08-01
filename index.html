@@ -153,6 +153,9 @@
             anchors.push(anchor);
 
             boxPlaced = true;
+          } else {
+            // Hide the marker after the box is placed
+            marker.isVisible = false;
           }
         });
       });
@@ -169,7 +172,14 @@
             marker.rotationQuaternion,
             marker.position
           );
+
+          if (boxPlaced) {
+            // Update the box position and rotation to match the marker
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+          }
         } else {
+          // Hide the marker if no hit test results
           marker.isVisible = false;
         }
       });
