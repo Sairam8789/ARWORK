@@ -95,16 +95,6 @@
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-        // Create an ArcRotateCamera for the regular web scene
-  // var camera = new BABYLON.ArcRotateCamera("camera1", 0, Math.PI / 3, 10, new BABYLON.Vector3(0, 1, 0), scene);
-  // camera.attachControl(canvas, true);
-
-  // var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-  // light.intensity = 0.7;
-
-  // // Create a box for the regular web scene
-  // var regularBox = BABYLON.MeshBuilder.CreateBox("regularBox", { size: 1 }, scene);
-  // regularBox.position.y = 0.5; // Position the box above the ground
         var camera = new BABYLON.FreeCamera(
           "camera1",
           new BABYLON.Vector3(0, 5, -10),
@@ -125,14 +115,6 @@
           },
           optionalFeatures: true,
         });
-          xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
-  if (box) {
-    box.isVisible = false; // Hide the box
-  }
-  if (marker) {
-    marker.isVisible = false; // Hide the marker (ground)
-  }
-});
 
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
