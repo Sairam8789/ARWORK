@@ -98,6 +98,11 @@
         var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
         light.intensity = 0.7;
 
+        box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+  box.material = new BABYLON.StandardMaterial("boxMat", scene);
+  box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+  box.position = new BABYLON.Vector3(0, 1, 0);
+
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
