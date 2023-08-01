@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <title>Babylon.js AR sample code</title>
+    <title>Babylon.js AR Sample Code with Drag and Drop</title>
 
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
@@ -62,7 +62,6 @@
       var scene = null;
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
-      var box = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -73,13 +72,14 @@
       };
 
       var createScene = async function () {
-        // This creates a basic Babylon Scene object (non-mesh)
         var scene = new BABYLON.Scene(engine);
 
-        // This creates and positions a free camera (non-mesh)
-        var camera = new BABYLON.FreeCamera(
-          "camera1",
-          new BABYLON.Vector3(0, 5, -10),
+        var camera = new BABYLON.ArcRotateCamera(
+          "Camera",
+          -Math.PI / 2,
+          Math.PI / 2,
+          12,
+          BABYLON.Vector3.Zero(),
           scene
         );
 
@@ -89,17 +89,27 @@
         // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
         var light = new BABYLON.HemisphericLight(
-          "light",
+          "HemiLight",
           new BABYLON.Vector3(0, 1, 0),
           scene
         );
 
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
+        var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene, false);
+        ground.isVisible = true;
 
-        var xr = await scene.createDefaultXRExperienceAsync({
+        var model = new BABYLON.MeshBuilder.CreateBox("box", { width: 0.2, height: 0.2, depth: 0.2 }, scene);
+        model.rotationQuaternion = new BABYLON.Quaternion();
+        model.position.y += 0.1;
+        model.isVisible = false;
+
+        //marker
+        const marker = BABYLON.MeshBuilder.CreateTorus('marker', { diameter: 0.15, thickness: 0.05 });
+        marker.isVisible = false;
+        marker.rotationQuaternion = new BABYLON.Quaternion();
+
+        //XR
+        const xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
           },
@@ -107,57 +117,67 @@
         });
 
         const fm = xr.baseExperience.featuresManager;
-
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        const anchors = fm.enableFeature(BABYLON.WebXRAnchorSystem, 'latest');
 
-        const marker = BABYLON.MeshBuilder.CreateGround(
-          "marker",
-          { width: 1, height: 1 },
-          scene
-        );
-        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-        marker.material.alpha = 0.5;
-        marker.isVisible = false;
-
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true; // XR session is now initialized
-          session.addEventListener("select", function () {
-            if (!marker.isVisible) {
-              return;
-            }
-
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            }
-
-            box.position = marker.position.clone();
-            box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
-
-            xrTest.isEnabled = false;
-          });
-        });
+        //hitTest
+        let hitTest;
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
-              marker.isVisible = true;
-            }
-
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
+            hitTest = results[0];
+            model.isVisible = true;
+            marker.isVisible = true;
+            hitTest.transformationMatrix.decompose(model.scaling, model.rotationQuaternion, model.position);
+            hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
           } else {
+            hitTest = undefined;
+            model.isVisible = false;
             marker.isVisible = false;
           }
         });
+
+        //Anchors
+        scene.onPointerDown = (event, pickInfo) => {
+          if (pickInfo.hit && pickInfo.pickedMesh && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
+            anchors.addAnchorPointUsingHitTestResultAsync(hitTest).then(() => {
+              model.isVisible = false; // Hide the temporary box after anchoring
+            });
+          }
+        };
+
+        // Drag and drop functionality
+        var selectedMesh = null;
+
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
+        pointerDragBehavior.moveAttached = false;
+        pointerDragBehavior.useObjectOrientationForDragging = false;
+
+        pointerDragBehavior.onDragStartObservable.add(() => {
+          if (selectedMesh) {
+            // Store the initial position before dragging starts
+            selectedMesh.initialPosition = selectedMesh.position.clone();
+          }
+        });
+
+        pointerDragBehavior.onDragObservable.add((event) => {
+          if (selectedMesh) {
+            // Update the position of the selected mesh while dragging
+            selectedMesh.position.x = selectedMesh.initialPosition.x + event.delta.x;
+            selectedMesh.position.z = selectedMesh.initialPosition.z + event.delta.z;
+          }
+        });
+
+        pointerDragBehavior.onDragEndObservable.add(() => {
+          selectedMesh = null;
+        });
+
+        scene.onPointerDown = (event, pickInfo) => {
+          if (pickInfo.hit && pickInfo.pickedMesh && anchors && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
+            selectedMesh = pickInfo.pickedMesh;
+            pointerDragBehavior.attach(selectedMesh);
+          }
+        };
 
         return scene;
       };
@@ -190,42 +210,6 @@
       window.addEventListener("resize", function () {
         engine.resize();
       });
-
-      let initialPointerDistance = null;
-let initialScale = null;
-
-canvas.addEventListener('pointerdown', (event) => {
-    if (initialPointerDistance !== null) { // Another pointer is already down
-        // Calculate distance between pointers
-        const dx = event.clientX - initialPointerX;
-        const dy = event.clientY - initialPointerY;
-        initialPointerDistance = Math.sqrt(dx * dx + dy * dy);
-        
-        initialScale = box.scaling.x; // assuming uniform scaling
-    }
-    // Store the initial pointer position
-    initialPointerX = event.clientX;
-    initialPointerY = event.clientY;
-});
-
-canvas.addEventListener('pointermove', (event) => {
-    if (initialPointerDistance !== null) {
-        const dx = event.clientX - initialPointerX;
-        const dy = event.clientY - initialPointerY;
-        const pointerDistance = Math.sqrt(dx * dx + dy * dy);
-        
-        const scaleFactor = pointerDistance / initialPointerDistance;
-        box.scaling.x = initialScale * scaleFactor;
-        box.scaling.y = initialScale * scaleFactor;
-        box.scaling.z = initialScale * scaleFactor;
-    }
-});
-
-canvas.addEventListener('pointerup', (event) => {
-    initialPointerDistance = null;
-    initialScale = null;
-});
-
     </script>
   </body>
 </html>
