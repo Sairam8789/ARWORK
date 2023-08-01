@@ -121,12 +121,14 @@
                 attachOwnPointerDragBehavior(box); // Attach the drag behavior
             });
         });
-         xr.baseExperience.onStateChangedObservable.add((state) => {
-          if (state === BABYLON.WebXRState.NOT_IN_XR) {
-            if (box) box.isVisible = false;
-            marker.isVisible = false;
-          }
-        });
+       xr.baseExperience.onStateChangedObservable.add((state) => {
+  if (state === BABYLON.WebXRState.NOT_IN_XR) {
+    if (box) box.isVisible = false;
+    if (marker) marker.isVisible = false;
+  }
+});
+
+
 
         xrTest.onHitTestResultObservable.add((results) => {
             if (results.length) {
