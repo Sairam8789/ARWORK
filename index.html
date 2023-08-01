@@ -119,17 +119,22 @@
 
         //hitTest
         let hitTest;
+        let boxAdded = false;
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
             hitTest = results[0];
-            model.isVisible = true;
             marker.isVisible = true;
-            hitTest.transformationMatrix.decompose(model.scaling, model.rotationQuaternion, model.position);
             hitTest.transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
+
+            // Add the box only once after the first hit test
+            if (!boxAdded) {
+              model.isVisible = true;
+              hitTest.transformationMatrix.decompose(model.scaling, model.rotationQuaternion, model.position);
+              boxAdded = true;
+            }
           } else {
             hitTest = undefined;
-            model.isVisible = false;
             marker.isVisible = false;
           }
         });
