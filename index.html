@@ -1,52 +1,5 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Babylon.js sample code</title>
-    <!-- Babylon.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-    <style>
-      html,
-      body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
-
-      #canvasZone {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <script>
+<script>
       var canvas = document.getElementById("renderCanvas");
-      var xr;
 
       var startRenderLoop = function (engine, canvas) {
         engine.runRenderLoop(function () {
@@ -59,7 +12,8 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var selectedMesh = null;
+      var xrSessionInit = false; // Flag to track XR session initialization
+      var box = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -69,61 +23,33 @@
         });
       };
 
+      function attachOwnPointerDragBehavior(mesh){
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior({dragPlaneNormal: new BABYLON.Vector3(0,1,0)});
+        pointerDragBehavior.moveAttached = false;
+        pointerDragBehavior.useObjectOrienationForDragging = false;
+        pointerDragBehavior.onDragStartObservable.add((event)=>{
+            console.log("startDrag");
+        });
+        pointerDragBehavior.onDragObservable.add((event)=>{
+            console.log("drag");
+            pointerDragBehavior.attachedNode.position.x += event.delta.x;
+            pointerDragBehavior.attachedNode.position.z += event.delta.z;
+        });
+        pointerDragBehavior.onDragEndObservable.add((event)=>{
+            console.log("endDrag");
+        });
+        mesh.addBehavior(pointerDragBehavior);
+      };
+
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
-
-        var camera = new BABYLON.ArcRotateCamera(
-          "Camera",
-          -Math.PI / 2,
-          Math.PI / 2,
-          12,
-          BABYLON.Vector3.Zero(),
-          scene
-        );
-
+        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
         camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
+        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        light.intensity = 0.7;
 
-        var light = new BABYLON.HemisphericLight(
-          "HemiLight",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-
-        var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
-          "UI"
-        );
-
-        var model = new BABYLON.MeshBuilder.CreateBox(
-          "box",
-          { width: 0.2, height: 0.2, depth: 0.2 },
-          scene
-        );
-        model.rotationQuaternion = new BABYLON.Quaternion();
-        model.position.y += 0.1;
-
-        var placeBtn = BABYLON.GUI.Button.CreateSimpleButton(
-          "placeBtn",
-          "Place model"
-        );
-        placeBtn.width = "150px";
-        placeBtn.height = "50px";
-        placeBtn.color = "white";
-        placeBtn.cornerRadius = 20;
-        placeBtn.background = "green";
-        placeBtn.top = "40%";
-
-        advancedTexture.addControl(placeBtn);
-
-        const marker = BABYLON.MeshBuilder.CreateTorus(
-          "marker",
-          { diameter: 0.15, thickness: 0.05 },
-          scene
-        );
-        marker.isVisible = false;
-        marker.rotationQuaternion = new BABYLON.Quaternion();
-
-        xr = await scene.createDefaultXRExperienceAsync({
+        var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
           },
@@ -133,66 +59,51 @@
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
-        let hitTest;
+        const marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
+        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
+        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+        marker.material.alpha = 0.5;
+        marker.isVisible = false;
+
+        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+          xrSessionInit = true; // XR session is now initialized
+          session.addEventListener("select", function () {
+            if (!marker.isVisible) {
+              return;
+            }
+
+            if (!box) {
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              attachOwnPointerDragBehavior(box);
+            }
+
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.scaling = marker.scaling.clone();
+            marker.isVisible = false;
+
+            xrTest.isEnabled = false;
+          });
+        });
 
         xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length && !selectedMesh) {
-            hitTest = results[0];
-            model.isVisible = false;
-            marker.isVisible = true;
-            hitTest.transformationMatrix.decompose(
-              model.scaling,
-              model.rotationQuaternion,
-              model.position
-            );
+          if (results.length) {
+            if (!box || !box.position.equals(marker.position)) {
+              marker.isVisible = true;
+            }
+
+            let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
               marker.scaling,
               marker.rotationQuaternion,
               marker.position
             );
           } else {
-            hitTest = undefined;
-            model.isVisible = false;
             marker.isVisible = false;
           }
         });
-
-        placeBtn.onPointerUpObservable.add(function () {
-          if (hitTest && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
-            model.isVisible = true;
-            selectedMesh = model.clone("clone");
-            model.isVisible = false;
-            hitTest.transformationMatrix.decompose(
-              selectedMesh.scaling,
-              selectedMesh.rotationQuaternion,
-              selectedMesh.position
-            );
-            attachOwnPointerDragBehavior(selectedMesh);
-          }
-        });
-
-        function attachOwnPointerDragBehavior(mesh) {
-          var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-            dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-          });
-
-          pointerDragBehavior.moveAttached = false;
-          pointerDragBehavior.useObjectOrienationForDragging = false;
-
-          pointerDragBehavior.onDragStartObservable.add((event) => {
-            console.log("startDrag");
-          });
-          pointerDragBehavior.onDragObservable.add((event) => {
-            console.log("drag");
-            pointerDragBehavior.attachedNode.position.x += event.delta.x;
-            pointerDragBehavior.attachedNode.position.z += event.delta.z;
-          });
-          pointerDragBehavior.onDragEndObservable.add((event) => {
-            console.log("endDrag");
-          });
-
-          mesh.addBehavior(pointerDragBehavior);
-        }
 
         return scene;
       };
@@ -221,9 +132,8 @@
         });
       });
 
+      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
     </script>
-  </body>
-</html>
