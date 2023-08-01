@@ -104,7 +104,12 @@
           },
           optionalFeatures: true,
         });
-
+xr.baseExperience.onExitingVRObservable.add(() => {
+          if (box) {
+            box.isVisible = false;
+            ground.isVisible=false;
+          }
+        });
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
