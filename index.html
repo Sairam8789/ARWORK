@@ -49,6 +49,7 @@
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
       var canvas = document.getElementById("renderCanvas");
+      var xr;
 
       var startRenderLoop = function (engine, canvas) {
         engine.runRenderLoop(function () {
@@ -139,7 +140,7 @@
               { width: 0.2, height: 0.2, depth: 0.2 },
               scene
             );
-            box.position.copyFrom(hitTest.getPose().transform.position);
+            box.position.copyFrom(hitTest.transformationMatrix.getTranslation());
             selectedMesh = box; // Assign the box to selectedMesh variable
 
             // Hide the torus marker
