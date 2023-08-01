@@ -2,9 +2,7 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
-    <title>Babylon.js AR sample code</title>
-
+    <title>Babylon.js sample code</title>
     <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
     <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
@@ -22,7 +20,6 @@
     <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       html,
       body {
@@ -62,7 +59,7 @@
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var selectedMesh = null; // Variable to keep track of the selected mesh (the box)
+      var selectedMesh = null;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -84,10 +81,7 @@
           scene
         );
 
-        // This targets the camera to scene origin
         camera.setTarget(BABYLON.Vector3.Zero());
-
-        // This attaches the camera to the canvas
         camera.attachControl(canvas, true);
 
         var light = new BABYLON.HemisphericLight(
@@ -96,19 +90,31 @@
           scene
         );
 
-        var ground = BABYLON.MeshBuilder.CreateGround(
-          "ground",
-          { width: 10, height: 10 },
-          scene,
-          false
-        );
-        ground.isVisible = false;
-
         var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI(
           "UI"
         );
 
-        //marker
+        var model = new BABYLON.MeshBuilder.CreateBox(
+          "box",
+          { width: 0.2, height: 0.2, depth: 0.2 },
+          scene
+        );
+        model.rotationQuaternion = new BABYLON.Quaternion();
+        model.position.y += 0.1;
+
+        var placeBtn = BABYLON.GUI.Button.CreateSimpleButton(
+          "placeBtn",
+          "Place model"
+        );
+        placeBtn.width = "150px";
+        placeBtn.height = "50px";
+        placeBtn.color = "white";
+        placeBtn.cornerRadius = 20;
+        placeBtn.background = "green";
+        placeBtn.top = "40%";
+
+        advancedTexture.addControl(placeBtn);
+
         const marker = BABYLON.MeshBuilder.CreateTorus(
           "marker",
           { diameter: 0.15, thickness: 0.05 },
@@ -117,8 +123,7 @@
         marker.isVisible = false;
         marker.rotationQuaternion = new BABYLON.Quaternion();
 
-        //XR
-        const xr = await scene.createDefaultXRExperienceAsync({
+        xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
           },
@@ -127,26 +132,67 @@
 
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-        const xrBackgroundRemover = fm.enableFeature(
-          BABYLON.WebXRBackgroundRemover.Name
-        );
+
+        let hitTest;
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length && !selectedMesh) {
-            // If hit test results are available and no mesh is selected, create the box
-            const hitTest = results[0];
-            var box = BABYLON.MeshBuilder.CreateBox(
-              "box",
-              { width: 0.2, height: 0.2, depth: 0.2 },
-              scene
+            hitTest = results[0];
+            model.isVisible = false;
+            marker.isVisible = true;
+            hitTest.transformationMatrix.decompose(
+              model.scaling,
+              model.rotationQuaternion,
+              model.position
             );
-            box.position.copyFrom(hitTest.transformationMatrix.getTranslation());
-            selectedMesh = box; // Assign the box to selectedMesh variable
-
-            // Hide the torus marker
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            hitTest = undefined;
+            model.isVisible = false;
             marker.isVisible = false;
           }
         });
+
+        placeBtn.onPointerUpObservable.add(function () {
+          if (hitTest && xr.baseExperience.state === BABYLON.WebXRState.IN_XR) {
+            model.isVisible = true;
+            selectedMesh = model.clone("clone");
+            model.isVisible = false;
+            hitTest.transformationMatrix.decompose(
+              selectedMesh.scaling,
+              selectedMesh.rotationQuaternion,
+              selectedMesh.position
+            );
+            attachOwnPointerDragBehavior(selectedMesh);
+          }
+        });
+
+        function attachOwnPointerDragBehavior(mesh) {
+          var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+            dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+          });
+
+          pointerDragBehavior.moveAttached = false;
+          pointerDragBehavior.useObjectOrienationForDragging = false;
+
+          pointerDragBehavior.onDragStartObservable.add((event) => {
+            console.log("startDrag");
+          });
+          pointerDragBehavior.onDragObservable.add((event) => {
+            console.log("drag");
+            pointerDragBehavior.attachedNode.position.x += event.delta.x;
+            pointerDragBehavior.attachedNode.position.z += event.delta.z;
+          });
+          pointerDragBehavior.onDragEndObservable.add((event) => {
+            console.log("endDrag");
+          });
+
+          mesh.addBehavior(pointerDragBehavior);
+        }
 
         return scene;
       };
@@ -175,12 +221,6 @@
         });
       });
 
-      // Reset the selected mesh when the user exits XR mode
-      xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
-        selectedMesh = null;
-      });
-
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
