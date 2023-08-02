@@ -64,8 +64,7 @@
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
-       var markerActive = true; 
-      
+      var ignoreHitTest=false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -145,25 +144,31 @@
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
-           // xrTest.isEnabled = false;
-             markerActive = false; 
+            xrTest.isEnabled = false;
+            ignoreHitTest = true;
+            setTimeout(() => {
+              ignoreHitTest = false;
+            }, 1000);
           });
         });
-xrTest.onHitTestResultObservable.add((results) => {
-  if (!markerActive ) return;
 
-  if (results.length) {
-    marker.isVisible = true;
-    let hitTest = results[0];
-    hitTest.transformationMatrix.decompose(
-      marker.scaling,
-      marker.rotationQuaternion,
-      marker.position
-    );
-  }
-});
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (ignoreHitTest) return;
 
-
+          if (results.length) {
+            if (!box) {
+              marker.isVisible = true;
+            }
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
 
         return scene;
       };
@@ -183,4 +188,4 @@ xrTest.onHitTestResultObservable.add((results) => {
       });
     </script>
   </body>
-</
+</html>
