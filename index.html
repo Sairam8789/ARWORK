@@ -2,27 +2,10 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
     <title>Babylon.js AR sample code</title>
-
-    <!-- Babylon.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
-    <script src="https://cdn.babylonjs.com/recast.js"></script>
-    <script src="https://cdn.babylonjs.com/ammo.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
-    <script src="https://cdn.babylonjs.com/cannon.js"></script>
-    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
-    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
     <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-
     <style>
       html,
       body {
@@ -43,6 +26,7 @@
         width: 100%;
         height: 100%;
       }
+
       #arButton {
         position: absolute;
         top: 10px;
@@ -62,151 +46,65 @@
     <button id="arButton">Enter AR Mode</button>
     <script>
       var canvas = document.getElementById("renderCanvas");
-      var arButton = document.getElementById("arButton");
+      var engine = new BABYLON.Engine(canvas, true);
+      var scene = new BABYLON.Scene(engine);
+      var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+      light.intensity = 0.7;
 
-      var engine = null;
-      var scene = null;
-      var sceneToRender = null;
-      var box = null;
-      var isARMode = false;
+      var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+      camera.setTarget(BABYLON.Vector3.Zero());
+      camera.attachControl(canvas, true);
 
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
+      var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+      box.position = new BABYLON.Vector3(0, 1, 0);
+      var material = new BABYLON.StandardMaterial("boxMat", scene);
+      material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+      box.material = material;
 
-      var createScene = async function () {
-        var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera(
-          "camera1",
-          new BABYLON.Vector3(0, 5, -10),
-          scene
-        );
-        camera.setTarget(BABYLON.Vector3.Zero());
-        camera.attachControl(canvas, true);
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-        light.intensity = 0.7;
+      engine.runRenderLoop(function () {
+        scene.render();
+      });
 
-        var xr = await scene.createDefaultXRExperienceAsync({
-          uiOptions: {
-            sessionMode: "immersive-ar",
-          },
-          optionalFeatures: true,
-        });
+      var xr = null;
+      var marker = null;
+      var xrTest = null;
 
-        const fm = xr.baseExperience.featuresManager;
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+      document.getElementById("arButton").addEventListener("click", async function () {
+        xr = await scene.createDefaultXRExperienceAsync({ uiOptions: { sessionMode: "immersive-ar" }, optionalFeatures: true });
+        xr.pointerSelection.detach();
 
-        const marker = BABYLON.MeshBuilder.CreateGround(
-          "marker",
-          { width: 1, height: 1 },
-          scene
-        );
+        marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
         marker.material = new BABYLON.StandardMaterial("markerMat", scene);
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
 
-        function attachSixDofDragBehavior(mesh) {
-          var sixDofDragBehavior = new BABYLON.SixDofDragBehavior();
-          mesh.addBehavior(sixDofDragBehavior);
-        }
-
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true; // XR session is now initialized
-
-          // Create and position the box
-          if (!box) {
-            box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-            box.material = new BABYLON.StandardMaterial("boxMat", scene);
-            box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            attachSixDofDragBehavior(box);
-          }
-
-          // Position the box based on the marker
-          box.position = marker.position.clone();
-          box.rotationQuaternion = marker.rotationQuaternion.clone();
-          box.scaling = marker.scaling.clone();
-          marker.isVisible = false;
-
-          xrTest.isEnabled = false;
-        });
+        xrTest = xr.baseExperience.featuresManager.enableFeature(BABYLON.WebXRHitTest, "latest");
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
-              marker.isVisible = true;
-            }
-
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
+            marker.isVisible = true;
+            results[0].transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
           } else {
             marker.isVisible = false;
           }
         });
 
-        scene.onPointerObservable.add((pointerInfo) => {
-          switch (pointerInfo.type) {
-            case BABYLON.PointerEventTypes.POINTERDOWN:
-              if (marker.isVisible) {
-                box.position = marker.position.clone();
-                box.rotationQuaternion = marker.rotationQuaternion.clone();
-                box.scaling = marker.scaling.clone();
-                marker.isVisible = false;
-              }
-              break;
-          }
+        xr.baseExperience.sessionManager.onXRSessionInit.add(() => {
+          box.position = marker.position.clone();
+          box.rotationQuaternion = marker.rotationQuaternion.clone();
+          box.scaling = marker.scaling.clone();
+          marker.isVisible = false;
+          xrTest.isEnabled = false;
+
+          var sixDofDragBehavior = new BABYLON.SixDofDragBehavior();
+          box.addBehavior(sixDofDragBehavior);
         });
-
-        return scene;
-      };
-
-      var engine;
-      try {
-        engine = createDefaultEngine();
-      } catch (e) {
-        console.log("the available createEngine function failed. Creating the default engine instead");
-        engine = createDefaultEngine();
-      }
-      if (!engine) throw "engine should not be null.";
-
-      scene = createScene(); // Babylon.js creates the default scene, including UI and AR setup
-
-      scene.then((result) => {
-        sceneToRender = result;
       });
 
-      engine.runRenderLoop(function () {
-        if (sceneToRender) {
-          sceneToRender.render();
-        }
-      });
-
-      // Resize
       window.addEventListener("resize", function () {
         engine.resize();
       });
-
-      arButton.onclick = function () {
-        scene.then((xrScene) => {
-          xrScene.activeCamera.xr
-            .requestSessionAsync({ optionalFeatures: ["local-floor", "hit-test"] })
-            .then(() => {
-              arButton.style.display = "none";
-            });
-        });
-      };
     </script>
   </body>
 </html>
