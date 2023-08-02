@@ -1,108 +1,56 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Babylon.js AR sample code</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <meta charset="utf-8" />
+    <title>Babylon.js 3D Scene with AR</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
     <style>
-      html,
       body {
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
         margin: 0;
-        padding: 0;
       }
-
       #renderCanvas {
         width: 100%;
         height: 100%;
-        touch-action: none;
-      }
-
-      #canvasZone {
-        width: 100%;
-        height: 100%;
-      }
-
-      #arButton {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 10px;
-        background-color: #2196f3;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
-    <button id="arButton">Enter AR Mode</button>
+    <canvas id="renderCanvas"></canvas>
     <script>
-      var canvas = document.getElementById("renderCanvas");
+      var canvas = document.getElementById('renderCanvas');
       var engine = new BABYLON.Engine(canvas, true);
-      var scene = new BABYLON.Scene(engine);
-      var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-      light.intensity = 0.7;
 
-      var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
-      camera.setTarget(BABYLON.Vector3.Zero());
-      camera.attachControl(canvas, true);
+      var createScene = function () {
+        var scene = new BABYLON.Scene(engine);
+        var camera = new BABYLON.ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, 2, BABYLON.Vector3.Zero(), scene);
+        camera.attachControl(canvas, true);
 
-      var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-      box.position = new BABYLON.Vector3(0, 1, 0);
-      var material = new BABYLON.StandardMaterial("boxMat", scene);
-      material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-      box.material = material;
+        var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), scene);
+
+        var box = BABYLON.MeshBuilder.CreateBox('box', { size: 1 }, scene);
+        box.material = new BABYLON.StandardMaterial('boxMat', scene);
+        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+
+        var xrHelper = null;
+        scene.onPointerObservable.add(async (pointerInfo) => {
+          if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
+            if (!xrHelper) {
+              xrHelper = await scene.createDefaultXRExperienceAsync({ floorMeshes: [] });
+              xrHelper.baseExperience.enterXRAsync('immersive-ar', 'local-floor');
+            }
+          }
+        });
+
+        return scene;
+      };
+
+      var scene = createScene();
 
       engine.runRenderLoop(function () {
         scene.render();
       });
 
-      var xr = null;
-      var marker = null;
-      var xrTest = null;
-
-      document.getElementById("arButton").addEventListener("click", async function () {
-        xr = await scene.createDefaultXRExperienceAsync({ uiOptions: { sessionMode: "immersive-ar" }, optionalFeatures: true });
-        xr.pointerSelection.detach();
-
-        marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
-        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-        marker.material.alpha = 0.5;
-        marker.isVisible = false;
-
-        xrTest = xr.baseExperience.featuresManager.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            marker.isVisible = true;
-            results[0].transformationMatrix.decompose(marker.scaling, marker.rotationQuaternion, marker.position);
-          } else {
-            marker.isVisible = false;
-          }
-        });
-
-        xr.baseExperience.sessionManager.onXRSessionInit.add(() => {
-          box.position = marker.position.clone();
-          box.rotationQuaternion = marker.rotationQuaternion.clone();
-          box.scaling = marker.scaling.clone();
-          marker.isVisible = false;
-          xrTest.isEnabled = false;
-
-          var sixDofDragBehavior = new BABYLON.SixDofDragBehavior();
-          box.addBehavior(sixDofDragBehavior);
-        });
-      });
-
-      window.addEventListener("resize", function () {
+      window.addEventListener('resize', function () {
         engine.resize();
       });
     </script>
