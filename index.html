@@ -74,27 +74,24 @@
       };
 function attachOwnPointerDragBehavior(mesh) {
   var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-    dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+    // Allow dragging along any direction
+    dragPlaneNormal: new BABYLON.Vector3(0, 0, 0),
   });
-  pointerDragBehavior.moveAttached = false;
-  pointerDragBehavior.useObjectOrientationForDragging = false;
-
+  
   pointerDragBehavior.onDragStartObservable.add((event) => {
     console.log("startDrag");
-    xrTest.isEnabled = false; // Disable hit testing during drag
   });
   pointerDragBehavior.onDragObservable.add((event) => {
     console.log("drag");
-    pointerDragBehavior.attachedNode.position.x += event.delta.x;
-    pointerDragBehavior.attachedNode.position.z += event.delta.z;
+    pointerDragBehavior.attachedNode.position.addInPlace(event.delta);
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
-    xrTest.isEnabled = true; // Re-enable hit testing after drag
   });
 
   mesh.addBehavior(pointerDragBehavior);
 }
+
 
 
 
