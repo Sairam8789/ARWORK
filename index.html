@@ -64,7 +64,6 @@
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
-      var ignoreHitTest=false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -73,11 +72,13 @@
           disableWebGL2Support: false,
         });
       };
-      function attachOwnPointerDragBehavior(mesh) {
-        var pointerDragBehavior = new BABYLON.PointerDragBehavior();
-        pointerDragBehavior.moveAttached = false;
-        pointerDragBehavior.useObjectOrientationForDragging = false;
 
+      function attachOwnPointerDragBehavior(mesh) {
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+          dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+        });
+        pointerDragBehavior.moveAttached = false;
+        pointerDragBehavior.useObjectOrienationForDragging = false;
         pointerDragBehavior.onDragStartObservable.add((event) => {
           console.log("startDrag");
         });
@@ -134,31 +135,29 @@
             if (!marker.isVisible) {
               return;
             }
+
             if (!box) {
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
               attachOwnPointerDragBehavior(box);
             }
+
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
             marker.isVisible = false;
+
             xrTest.isEnabled = false;
-            ignoreHitTest = true;
-            setTimeout(() => {
-              ignoreHitTest = false;
-            }, 1000);
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
-          if (ignoreHitTest) return;
-
           if (results.length) {
-            if (!box) {
+            if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
             }
+
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
               marker.scaling,
@@ -173,13 +172,28 @@
         return scene;
       };
 
-      engine = createDefaultEngine();
-      if (!engine) throw "engine should not be null.";
+      window.initFunction = async function () {
+        var asyncEngineCreation = async function () {
+          try {
+            return createDefaultEngine();
+          } catch (e) {
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
+            return createDefaultEngine();
+          }
+        };
 
-      createScene().then(function (newScene) {
-        scene = newScene;
-        sceneToRender = scene;
+        window.engine = await asyncEngineCreation();
+        if (!engine) throw "engine should not be null.";
         startRenderLoop(engine, canvas);
+        window.scene = createScene();
+      };
+
+      initFunction().then(() => {
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
       });
 
       // Resize
