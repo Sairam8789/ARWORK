@@ -151,24 +151,21 @@
             }, 1000);
           });
         });
+xrTest.onHitTestResultObservable.add((results) => {
+  if (ignoreHitTest || box) return;
 
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (ignoreHitTest) return;
+  if (results.length) {
+    marker.isVisible = true;
+    let hitTest = results[0];
+    hitTest.transformationMatrix.decompose(
+      marker.scaling,
+      marker.rotationQuaternion,
+      marker.position
+    );
+  }
+});
 
-          if (results.length) {
-            if (!box) {
-              marker.isVisible = true;
-            }
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
-          }
-        });
+
 
         return scene;
       };
