@@ -73,9 +73,7 @@
         });
       };
 function attachOwnPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-    dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-  });
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior();
   pointerDragBehavior.moveAttached = false;
   pointerDragBehavior.useObjectOrientationForDragging = false;
 
