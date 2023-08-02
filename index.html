@@ -64,6 +64,7 @@
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
+      var ignoreHitTest=false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -151,10 +152,16 @@ function attachOwnPointerDragBehavior(mesh) {
             marker.isVisible = false;
 
             xrTest.isEnabled = false;
+            ignoreHitTest = true; // Add this line
+            setTimeout(() => {
+              ignoreHitTest = false; // Add this line
+            }, 1000);
+          
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
+          if (ignoreHitTest) return;
           if (results.length) {
             if (!box || !box.position.equals(marker.position)) {
               marker.isVisible = true;
