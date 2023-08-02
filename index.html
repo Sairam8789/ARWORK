@@ -94,7 +94,7 @@
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
-   // pointerDragBehavior.attachedNode.position = lastPosition; // Set the mesh's position to the stored value at the end of the drag
+   pointerDragBehavior.attachedNode.position = lastPosition; // Set the mesh's position to the stored value at the end of the drag
    
 
   // Update the box position directly
