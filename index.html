@@ -149,13 +149,12 @@ function attachOwnPointerDragBehavior(mesh) {
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
+          //  marker.isVisible = false;
 
-            xrTest.isEnabled = false;
+            //xrTest.isEnabled = false;
             ignoreHitTest = true; // Add this line
-            setTimeout(() => {
-              ignoreHitTest = false; // Add this line
-            }, 1000);
+            
+          
           
           });
         });
