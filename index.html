@@ -44,26 +44,11 @@
         width: 100%;
         height: 100%;
       }
-
-      #arButton {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 10px;
-        background-color: #2196f3;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        font-size: 16px;
-        cursor: pointer;
-      }
     </style>
   </head>
   <body>
-    <div id="canvasZone">
-      <canvas id="renderCanvas"></canvas>
-      <button id="arButton">Enter AR Mode</button>
-    </div>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <button id="arButton">Enter AR Mode</button>
     <script>
       var canvas = document.getElementById("renderCanvas");
       var arButton = document.getElementById("arButton");
@@ -113,7 +98,60 @@
           optionalFeatures: true,
         });
 
-        // Rest of the createScene function remains the same...
+        const fm = xr.baseExperience.featuresManager;
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+
+        const marker = BABYLON.MeshBuilder.CreateGround(
+          "marker",
+          { width: 1, height: 1 },
+          scene
+        );
+        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
+        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+        marker.material.alpha = 0.5;
+        marker.isVisible = false;
+
+        function attachSixDofDragBehavior(mesh) {
+          var sixDofDragBehavior = new BABYLON.SixDofDragBehavior();
+          mesh.addBehavior(sixDofDragBehavior);
+        }
+
+        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+          xrSessionInit = true; // XR session is now initialized
+
+          // Create and position the box
+          if (!box) {
+            box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+            box.material = new BABYLON.StandardMaterial("boxMat", scene);
+            box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            attachSixDofDragBehavior(box);
+          }
+
+          // Position the box based on the marker
+          box.position = marker.position.clone();
+          box.rotationQuaternion = marker.rotationQuaternion.clone();
+          box.scaling = marker.scaling.clone();
+          marker.isVisible = false;
+
+          xrTest.isEnabled = false;
+        });
+
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (results.length) {
+            if (!box || !box.position.equals(marker.position)) {
+              marker.isVisible = true;
+            }
+
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
 
         return scene;
       };
