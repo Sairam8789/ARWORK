@@ -73,27 +73,24 @@
           disableWebGL2Support: false,
         });
       };
-function attachOwnPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior();
-  pointerDragBehavior.moveAttached = false;
-  pointerDragBehavior.useObjectOrientationForDragging = false;
+      function attachOwnPointerDragBehavior(mesh) {
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior();
+        pointerDragBehavior.moveAttached = false;
+        pointerDragBehavior.useObjectOrientationForDragging = false;
 
-  pointerDragBehavior.onDragStartObservable.add((event) => {
-    console.log("startDrag");
-  });
-  pointerDragBehavior.onDragObservable.add((event) => {
-    console.log("drag");
-    pointerDragBehavior.attachedNode.position.x += event.delta.x;
-    pointerDragBehavior.attachedNode.position.z += event.delta.z;
-  });
-  pointerDragBehavior.onDragEndObservable.add((event) => {
-    console.log("endDrag");
-    // Don't reset the position here; leave the box where it was dragged
-  });
-  mesh.addBehavior(pointerDragBehavior);
-}
-
-
+        pointerDragBehavior.onDragStartObservable.add((event) => {
+          console.log("startDrag");
+        });
+        pointerDragBehavior.onDragObservable.add((event) => {
+          console.log("drag");
+          pointerDragBehavior.attachedNode.position.x += event.delta.x;
+          pointerDragBehavior.attachedNode.position.z += event.delta.z;
+        });
+        pointerDragBehavior.onDragEndObservable.add((event) => {
+          console.log("endDrag");
+        });
+        mesh.addBehavior(pointerDragBehavior);
+      }
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
@@ -137,35 +134,31 @@ function attachOwnPointerDragBehavior(mesh) {
             if (!marker.isVisible) {
               return;
             }
-
             if (!box) {
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-             // var clonedMesh = box.clone('clone');
               attachOwnPointerDragBehavior(box);
             }
-
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-          //  marker.isVisible = false;
-
-            //xrTest.isEnabled = false;
-            ignoreHitTest = true; // Add this line
-            
-          
-          
+            marker.isVisible = false;
+            xrTest.isEnabled = false;
+            ignoreHitTest = true;
+            setTimeout(() => {
+              ignoreHitTest = false;
+            }, 1000);
           });
         });
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (ignoreHitTest) return;
+
           if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
+            if (!box) {
               marker.isVisible = true;
             }
-
             let hitTest = results[0];
             hitTest.transformationMatrix.decompose(
               marker.scaling,
@@ -180,28 +173,13 @@ function attachOwnPointerDragBehavior(mesh) {
         return scene;
       };
 
-      window.initFunction = async function () {
-        var asyncEngineCreation = async function () {
-          try {
-            return createDefaultEngine();
-          } catch (e) {
-            console.log(
-              "the available createEngine function failed. Creating the default engine instead"
-            );
-            return createDefaultEngine();
-          }
-        };
+      engine = createDefaultEngine();
+      if (!engine) throw "engine should not be null.";
 
-        window.engine = await asyncEngineCreation();
-        if (!engine) throw "engine should not be null.";
+      createScene().then(function (newScene) {
+        scene = newScene;
+        sceneToRender = scene;
         startRenderLoop(engine, canvas);
-        window.scene = createScene();
-      };
-
-      initFunction().then(() => {
-        scene.then((returnedScene) => {
-          sceneToRender = returnedScene;
-        });
       });
 
       // Resize
@@ -210,4 +188,4 @@ function attachOwnPointerDragBehavior(mesh) {
       });
     </script>
   </body>
-</html>
+</
