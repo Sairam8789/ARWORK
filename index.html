@@ -72,8 +72,7 @@
           disableWebGL2Support: false,
         });
       };
-
-  function attachOwnPointerDragBehavior(mesh) {
+function attachOwnPointerDragBehavior(mesh) {
   var pointerDragBehavior = new BABYLON.PointerDragBehavior({
     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
   });
@@ -82,6 +81,7 @@
 
   pointerDragBehavior.onDragStartObservable.add((event) => {
     console.log("startDrag");
+    xrTest.isEnabled = false; // Disable hit testing during drag
   });
   pointerDragBehavior.onDragObservable.add((event) => {
     console.log("drag");
@@ -90,11 +90,12 @@
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
-    // The mesh will remain where it was released, no additional logic needed here.
+    xrTest.isEnabled = true; // Re-enable hit testing after drag
   });
 
   mesh.addBehavior(pointerDragBehavior);
 }
+
 
 
 
