@@ -1,58 +1,56 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Babylon.js 3D Scene with AR</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js AR Experience</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <style>
-      body {
-        margin: 0;
-      }
-      #renderCanvas {
-        width: 100%;
-        height: 100%;
-      }
+        body {
+            margin: 0;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <canvas id="renderCanvas"></canvas>
     <script>
-      var canvas = document.getElementById('renderCanvas');
-      var engine = new BABYLON.Engine(canvas, true);
+        const canvas = document.getElementById('renderCanvas');
+        const engine = new BABYLON.Engine(canvas, true);
 
-      var createScene = function () {
-        var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.ArcRotateCamera('Camera', Math.PI / 2, Math.PI / 2, 2, BABYLON.Vector3.Zero(), scene);
-        camera.attachControl(canvas, true);
+        const createScene = () => {
+            const scene = new BABYLON.Scene(engine);
+            const camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 1.5, -3), scene);
+            camera.attachControl(canvas, true);
 
-        var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), scene);
+            const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
 
-        var box = BABYLON.MeshBuilder.CreateBox('box', { size: 1 }, scene);
-        box.material = new BABYLON.StandardMaterial('boxMat', scene);
-        box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            const box = BABYLON.MeshBuilder.CreateBox('box', { size: 0.3 }, scene);
+            box.material = new BABYLON.StandardMaterial('boxMat', scene);
+            box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            box.position.y = 0.3;
 
-        var xrHelper = null;
-        scene.onPointerObservable.add(async (pointerInfo) => {
-          if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
-            if (!xrHelper) {
-              xrHelper = await scene.createDefaultXRExperienceAsync({ floorMeshes: [] });
-              xrHelper.baseExperience.enterXRAsync('immersive-ar', 'local-floor');
-            }
-          }
+            scene.createDefaultXRExperienceAsync({
+                uiOptions: {
+                    sessionMode: 'immersive-ar'
+                }
+            });
+
+            return scene;
+        };
+
+        const scene = createScene();
+
+        engine.runRenderLoop(() => {
+            scene.render();
         });
 
-        return scene;
-      };
-
-      var scene = createScene();
-
-      engine.runRenderLoop(function () {
-        scene.render();
-      });
-
-      window.addEventListener('resize', function () {
-        engine.resize();
-      });
+        window.addEventListener('resize', () => {
+            engine.resize();
+        });
     </script>
-  </body>
+</body>
 </html>
