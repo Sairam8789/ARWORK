@@ -51,20 +51,11 @@
     <script>
       var canvas = document.getElementById("renderCanvas");
 
-      var startRenderLoop = function (engine, canvas) {
-        engine.runRenderLoop(function () {
-          if (sceneToRender && sceneToRender.activeCamera) {
-            sceneToRender.render();
-          }
-        });
-      };
-
       var engine = null;
       var scene = null;
       var sceneToRender = null;
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
-      var isARMode = false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -74,25 +65,34 @@
         });
       };
 
-      // function attachOwnPointerDragBehavior(mesh) {
-      //   var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-      //     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-      //   });
-      //   pointerDragBehavior.moveAttached = false;
-      //   pointerDragBehavior.useObjectOrienationForDragging = false;
-      //   pointerDragBehavior.onDragStartObservable.add((event) => {
-      //     console.log("startDrag");
-      //   });
-      //   pointerDragBehavior.onDragObservable.add((event) => {
-      //     console.log("drag");
-      //     pointerDragBehavior.attachedNode.position.x += event.delta.x;
-      //     pointerDragBehavior.attachedNode.position.z += event.delta.z;
-      //   });
-      //   pointerDragBehavior.onDragEndObservable.add((event) => {
-      //     console.log("endDrag");
-      //   });
-      //   mesh.addBehavior(pointerDragBehavior);
-      // }
+      var createRegularScene = function () {
+        return new Promise((resolve) => {
+          var scene = new BABYLON.Scene(engine);
+          var camera = new BABYLON.ArcRotateCamera(
+            "ArcRotateCamera",
+            1,
+            0.8,
+            10,
+            new BABYLON.Vector3(0, 0, 0),
+            scene
+          );
+          camera.attachControl(canvas, true);
+          var light = new BABYLON.HemisphericLight(
+            "light",
+            new BABYLON.Vector3(0, 1, 0),
+            scene
+          );
+          light.intensity = 0.7;
+
+          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+          box.position = new BABYLON.Vector3(0, 1, 0);
+          var material = new BABYLON.StandardMaterial("boxMat", scene);
+          material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+          box.material = material;
+
+          resolve(scene);
+        });
+      };
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
@@ -185,54 +185,12 @@
 
         return scene;
       };
-      var createRegularScene = function () {
-        return new Promise((resolve) => {
-          var scene = new BABYLON.Scene(engine);
-          var camera = new BABYLON.ArcRotateCamera(
-            "ArcRotateCamera",
-            1,
-            0.8,
-            10,
-            new BABYLON.Vector3(0, 0, 0),
-            scene
-          );
-          camera.attachControl(canvas, true);
-          var light = new BABYLON.HemisphericLight(
-            "light",
-            new BABYLON.Vector3(0, 1, 0),
-            scene
-          );
-          light.intensity = 0.7;
-
-          var box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
-          box.position = new BABYLON.Vector3(0, 1, 0);
-          var material = new BABYLON.StandardMaterial("boxMat", scene);
-          material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-          box.material = material;
-
-          // var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-          //   dragAxis: new BABYLON.Vector3(1, 1, 1),
-          // });
-          // pointerDragBehavior.useObjectOrienationForDragging = false;
-          // box.addBehavior(pointerDragBehavior);
-
-          resolve(scene);
-        });
-      };
 
       var startRenderLoop = function (engine) {
         engine.runRenderLoop(function () {
           if (sceneToRender) {
             sceneToRender.render();
           }
-        });
-      };
-
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
         });
       };
 
@@ -250,17 +208,35 @@
 
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
-        startRenderLoop(engine);
-        if (isARMode) {
-          window.scene = await createScene();
-        } else {
-          window.scene = await createRegularScene();
-        }
+
+        // Check if AR mode is supported
+        BABYLON.WebXRSessionManager.IsSessionSupported("immersive-ar")
+          .then((supported) => {
+            if (supported) {
+              // AR is supported, create and render AR scene
+              createScene().then((createdScene) => {
+                sceneToRender = createdScene;
+                startRenderLoop(engine);
+              });
+            } else {
+              // AR is not supported, create and render regular scene
+              createRegularScene().then((createdScene) => {
+                sceneToRender = createdScene;
+                startRenderLoop(engine);
+              });
+            }
+          })
+          .catch((error) => {
+            // Error handling if AR detection fails
+            console.error("Error detecting AR support:", error);
+            createRegularScene().then((createdScene) => {
+              sceneToRender = createdScene;
+              startRenderLoop(engine);
+            });
+          });
       };
 
-      initFunction().then(() => {
-        sceneToRender = window.scene;
-      });
+      initFunction();
 
       window.addEventListener("resize", function () {
         engine.resize();
