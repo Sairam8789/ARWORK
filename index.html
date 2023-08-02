@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Babylon.js AR Experience</title>
+    <title>Babylon.js AR with Hit Test</title>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <style>
         body {
@@ -21,35 +21,62 @@
         const canvas = document.getElementById('renderCanvas');
         const engine = new BABYLON.Engine(canvas, true);
 
-        const createScene = () => {
+        const createScene = async () => {
             const scene = new BABYLON.Scene(engine);
             const camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 1.5, -3), scene);
             camera.attachControl(canvas, true);
 
             const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
 
-            const box = BABYLON.MeshBuilder.CreateBox('box', { size: 0.3 }, scene);
-            box.material = new BABYLON.StandardMaterial('boxMat', scene);
-            box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            box.position.y = 0.3;
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 2, height: 2 }, scene);
+            ground.material = new BABYLON.StandardMaterial('groundMat', scene);
+            ground.material.alpha = 0.5;
+            ground.position.y = -0.1;
 
-            scene.createDefaultXRExperienceAsync({
+            const xrHelper = await scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: 'immersive-ar'
                 }
             });
 
+            const hitTest = await xrHelper.baseExperience.featuresManager.enableFeature(
+                BABYLON.WebXRHitTest.Name,
+                'latest',
+                { trackableTypes: BABYLON.WebXRHitTest.TrackableType.PLANE }
+            );
+
+            hitTest.onHitTestResultObservable.add((results) => {
+                if (results.length) {
+                    const hitResult = results[0];
+                    ground.position.setFromFloats(hitResult.position.x, hitResult.position.y, hitResult.position.z);
+                    ground.rotationQuaternion = hitResult.rotationQuaternion;
+                }
+            });
+
+            ground.actionManager = new BABYLON.ActionManager(scene);
+            ground.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+                BABYLON.ActionManager.OnPickTrigger,
+                () => {
+                    const box = BABYLON.MeshBuilder.CreateBox('box', { size: 0.3 }, scene);
+                    box.material = new BABYLON.StandardMaterial('boxMat', scene);
+                    box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+                    box.position = ground.position.clone();
+                    box.position.y += 0.15;
+                    ground.isVisible = false;
+                }
+            ));
+
             return scene;
         };
 
-        const scene = createScene();
+        createScene().then((scene) => {
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
 
-        engine.runRenderLoop(() => {
-            scene.render();
-        });
-
-        window.addEventListener('resize', () => {
-            engine.resize();
+            window.addEventListener('resize', () => {
+                engine.resize();
+            });
         });
     </script>
 </body>
