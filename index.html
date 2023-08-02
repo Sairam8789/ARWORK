@@ -73,11 +73,10 @@
         });
       };
 function attachOwnPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-    // Allow dragging along any direction
-    dragPlaneNormal: new BABYLON.Vector3(0, 0, 0),
-  });
-  
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 0, 0) });
+  pointerDragBehavior.moveAttached = false;
+  pointerDragBehavior.useObjectOrienationForDragging = false;
+
   pointerDragBehavior.onDragStartObservable.add((event) => {
     console.log("startDrag");
   });
@@ -91,6 +90,7 @@ function attachOwnPointerDragBehavior(mesh) {
 
   mesh.addBehavior(pointerDragBehavior);
 }
+
 
 
 
