@@ -78,25 +78,23 @@ function attachOwnPointerDragBehavior(mesh) {
   });
   pointerDragBehavior.moveAttached = false;
   pointerDragBehavior.useObjectOrientationForDragging = false;
-  var lastPosition; // Store the last position
 
   pointerDragBehavior.onDragStartObservable.add((event) => {
     console.log("startDrag");
-    lastPosition = mesh.position.clone(); // Store the initial position at the start of the drag
   });
   pointerDragBehavior.onDragObservable.add((event) => {
     console.log("drag");
-    lastPosition.x += event.delta.x; // Update the stored position based on the delta
-    lastPosition.z += event.delta.z;
     pointerDragBehavior.attachedNode.position.x += event.delta.x;
     pointerDragBehavior.attachedNode.position.z += event.delta.z;
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
-    pointerDragBehavior.attachedNode.position = lastPosition; // Set the mesh's position to the stored value at the end of the drag
+    // Don't reset the position here; leave the box where it was dragged
   });
   mesh.addBehavior(pointerDragBehavior);
 }
+
+
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
