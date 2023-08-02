@@ -73,30 +73,30 @@
         });
       };
 function attachOwnPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 0, 0) });
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+    dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+  });
   pointerDragBehavior.moveAttached = false;
-  pointerDragBehavior.useObjectOrienationForDragging = false;
+  pointerDragBehavior.useObjectOrientationForDragging = false;
+  var lastPosition; // Store the last position
 
   pointerDragBehavior.onDragStartObservable.add((event) => {
     console.log("startDrag");
+    lastPosition = mesh.position.clone(); // Store the initial position at the start of the drag
   });
   pointerDragBehavior.onDragObservable.add((event) => {
     console.log("drag");
-    mesh.position.addInPlace(event.delta); // Update this line
+    lastPosition.x += event.delta.x; // Update the stored position based on the delta
+    lastPosition.z += event.delta.z;
+    pointerDragBehavior.attachedNode.position.x += event.delta.x;
+    pointerDragBehavior.attachedNode.position.z += event.delta.z;
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
+    pointerDragBehavior.attachedNode.position = lastPosition; // Set the mesh's position to the stored value at the end of the drag
   });
-
   mesh.addBehavior(pointerDragBehavior);
 }
-
-
-
-
-
-
-
 
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
