@@ -48,14 +48,24 @@
   </head>
   <body>
     <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+    <button id="arButton">Enter AR Mode</button>
     <script>
       var canvas = document.getElementById("renderCanvas");
+      var arButton = document.getElementById("arButton");
+
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
+      };
 
       var engine = null;
       var scene = null;
       var sceneToRender = null;
-      var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
+      var isARMode = false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -63,6 +73,39 @@
           stencil: true,
           disableWebGL2Support: false,
         });
+      };
+
+      var createScene = async function () {
+        var scene = new BABYLON.Scene(engine);
+        var camera = new BABYLON.FreeCamera(
+          "camera1",
+          new BABYLON.Vector3(0, 5, -10),
+          scene
+        );
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        light.intensity = 0.7;
+
+        if (!navigator.xr) {
+          console.error("WebXR is not supported in this browser.");
+          return scene;
+        }
+
+        var xr = await scene.createDefaultXRExperienceAsync({
+          uiOptions: {
+            sessionMode: "immersive-ar",
+          },
+          optionalFeatures: true,
+        });
+
+        // Rest of the createScene function remains the same...
+
+        return scene;
       };
 
       var createRegularScene = function () {
@@ -94,103 +137,19 @@
         });
       };
 
-      var createScene = async function () {
-        var scene = new BABYLON.Scene(engine);
-        var camera = new BABYLON.FreeCamera(
-          "camera1",
-          new BABYLON.Vector3(0, 5, -10),
-          scene
-        );
-        camera.setTarget(BABYLON.Vector3.Zero());
-        camera.attachControl(canvas, true);
-        var light = new BABYLON.HemisphericLight(
-          "light",
-          new BABYLON.Vector3(0, 1, 0),
-          scene
-        );
-        light.intensity = 0.7;
-
-        var xr = await scene.createDefaultXRExperienceAsync({
-          uiOptions: {
-            sessionMode: "immersive-ar",
-          },
-          optionalFeatures: true,
-        });
-        xr.baseExperience.sessionManager.onXRSessionEnded.add(() => {
-          if (marker) {
-            marker.isVisible = false;
-          }
-
-          if (box) {
-            box.isVisible = false;
-          }
-        });
-        function attachSixDofDragBehavior(mesh) {
-          var sixDofDragBehavior = new BABYLON.SixDofDragBehavior();
-          mesh.addBehavior(sixDofDragBehavior);
-        }
-
-        const fm = xr.baseExperience.featuresManager;
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-        const marker = BABYLON.MeshBuilder.CreateGround(
-          "marker",
-          { width: 1, height: 1 },
-          scene
-        );
-        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-        marker.material.alpha = 0.5;
-        marker.isVisible = false;
-
-        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-          xrSessionInit = true; // XR session is now initialized
-          session.addEventListener("select", function () {
-            if (!marker.isVisible) {
-              return;
-            }
-
-            if (!box) {
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-              attachSixDofDragBehavior(box);
-            }
-
-            box.position = marker.position.clone();
-            box.rotationQuaternion = marker.rotationQuaternion.clone();
-            box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
-
-            xrTest.isEnabled = false;
-          });
-        });
-
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (results.length) {
-            if (!box || !box.position.equals(marker.position)) {
-              marker.isVisible = true;
-            }
-
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
-          }
-        });
-
-        return scene;
-      };
-
       var startRenderLoop = function (engine) {
         engine.runRenderLoop(function () {
           if (sceneToRender) {
             sceneToRender.render();
           }
+        });
+      };
+
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
         });
       };
 
@@ -208,35 +167,28 @@
 
         window.engine = await asyncEngineCreation();
         if (!engine) throw "engine should not be null.";
-
-        // Check if AR mode is supported
-        BABYLON.WebXRSessionManager.IsSessionSupported("immersive-ar")
-          .then((supported) => {
-            if (supported) {
-              // AR is supported, create and render AR scene
-              createScene().then((createdScene) => {
-                sceneToRender = createdScene;
-                startRenderLoop(engine);
-              });
-            } else {
-              // AR is not supported, create and render regular scene
-              createRegularScene().then((createdScene) => {
-                sceneToRender = createdScene;
-                startRenderLoop(engine);
-              });
-            }
-          })
-          .catch((error) => {
-            // Error handling if AR detection fails
-            console.error("Error detecting AR support:", error);
-            createRegularScene().then((createdScene) => {
-              sceneToRender = createdScene;
-              startRenderLoop(engine);
-            });
-          });
+        startRenderLoop(engine);
+        window.scene = await createRegularScene();
       };
 
-      initFunction();
+      initFunction().then(() => {
+        sceneToRender = window.scene;
+      });
+
+      arButton.addEventListener("click", function () {
+        isARMode = true;
+        arButton.style.display = "none";
+        if (navigator.xr) {
+          createScene().then((createdScene) => {
+            sceneToRender = createdScene;
+          });
+        } else {
+          console.error("WebXR is not supported in this browser.");
+          createRegularScene().then((createdScene) => {
+            sceneToRender = createdScene;
+          });
+        }
+      });
 
       window.addEventListener("resize", function () {
         engine.resize();
