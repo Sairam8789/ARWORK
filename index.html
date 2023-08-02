@@ -82,7 +82,7 @@ function attachOwnPointerDragBehavior(mesh) {
   });
   pointerDragBehavior.onDragObservable.add((event) => {
     console.log("drag");
-    pointerDragBehavior.attachedNode.position.addInPlace(event.delta);
+    mesh.position.addInPlace(event.delta); // Update this line
   });
   pointerDragBehavior.onDragEndObservable.add((event) => {
     console.log("endDrag");
@@ -90,6 +90,7 @@ function attachOwnPointerDragBehavior(mesh) {
 
   mesh.addBehavior(pointerDragBehavior);
 }
+
 
 
 
